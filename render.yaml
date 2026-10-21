@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: bagua-duel
+    runtime: static
+    buildCommand: ""
+    staticPublishPath: .

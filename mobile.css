@@ -1,0 +1,123 @@
+/* 手机端：八卦盘在上，信息卡、武器、技能、人物牌、记录依次向下 */
+html, body { height: auto; min-height: 100%; overflow-x: hidden; overflow-y: auto; }
+#app.mobile { display: block; height: auto; min-height: 100%; grid-template-rows: none; }
+
+#app.mobile .topbar {
+  position: sticky; top: 0; z-index: 30; height: 44px; padding: 0 8px; gap: 8px;
+  background: rgba(12,16,18,.96); backdrop-filter: blur(6px);
+}
+#app.mobile .brand { font-size: 12px; letter-spacing: .14em; }
+#app.mobile .brand span { display: none; }
+#app.mobile .seatbar { display: none; }
+#app.mobile .status { flex: 1; font-size: 8px; line-height: 1.3; text-align: right; white-space: nowrap; overflow: hidden; }
+#app.mobile .status br { display: none; }
+#app.mobile .topactions { gap: 4px; }
+#app.mobile .topactions button { padding: 4px 7px; font-size: 9px; }
+
+#app.mobile .stage { display: block; padding: 0; background: radial-gradient(ellipse at 50% 30%, #111517 0%, #070809 60%, #050607 100%); }
+#app.mobile .arena { padding: 0 0 4px; gap: 0; }
+#app.mobile #fx { border-radius: 0; }
+#app.mobile .figure { height: 34px; }
+#app.mobile .figure.me { height: 30px; }
+#app.mobile .figmask { width: 30px; height: 30px; flex-basis: 30px; transform: scale(.62); transform-origin: center; }
+#app.mobile .figbox { gap: 4px; }
+#app.mobile .figmeta b { font-size: 9px; letter-spacing: .14em; }
+#app.mobile .figmeta span { font-size: 6px; }
+#app.mobile .boardwrap { width: 326px; height: 326px; flex-basis: 326px; }
+#app.mobile .dili { display: none; }
+#app.mobile .slot {
+  width: 66px; height: 72px;
+  transform: translate(-50%, -50%) rotate(var(--a)) translateY(-122px) rotate(calc(-1 * var(--a)));
+}
+#app.mobile .slothead { height: 12px; gap: 2px; }
+#app.mobile .slothead b { font-size: 7.4px; }
+#app.mobile .slothead span { font-size: 5px; }
+#app.mobile .cempty, #app.mobile .unit { width: 62px; height: 50px; }
+#app.mobile .cempty b { font-size: 7px; }
+#app.mobile .cempty span { font-size: 5.2px; }
+#app.mobile .cempty em { font-size: 5px; }
+#app.mobile .unit { padding: 1px; }
+#app.mobile .unit .uport { width: 21px; height: 23px; }
+#app.mobile .unit .uport svg { width: 21px; height: 23px; }
+#app.mobile .unit .uname { font-size: 6.2px; max-width: 56px; margin-top: 0; }
+#app.mobile .unit .ustats { font-size: 6.4px; }
+#app.mobile .unit .ustats span { width: 12px; height: 12px; }
+#app.mobile .unit .ushield { font-size: 5.5px; height: 10px; padding: 0 2px; }
+#app.mobile .unit .st { font-size: 5px; }
+#app.mobile .unit .st.eq { max-width: 26px; }
+#app.mobile .unit.mine::after, #app.mobile .unit.foe::after { width: 9px; height: 9px; font-size: 5px; }
+#app.mobile .taiji.big { width: 84px; height: 84px; }
+#app.mobile .taiji.small { width: 38px; height: 38px; }
+#app.mobile .seatmark { font-size: 5.5px; }
+#app.mobile .seatmark.top { top: 5px; }
+#app.mobile .seatmark.bottom { bottom: 5px; }
+#app.mobile .prompt { flex-basis: 22px; font-size: 9px; padding: 0 8px; gap: 4px; }
+#app.mobile .prompt .sub { display: none; }
+
+#app.mobile .mbody { display: flex; flex-direction: column; gap: 7px; padding: 6px 8px 22px; }
+#app.mobile .previewPanel { height: auto; min-height: 74px; padding: 6px; gap: 6px; }
+#app.mobile .pvport { width: 46px; }
+#app.mobile .pvport svg { width: 46px; height: 55px; }
+#app.mobile .pvt b { font-size: 12px; }
+#app.mobile .pvt span { font-size: 6.5px; }
+#app.mobile .pvstats span { font-size: 7.5px; }
+#app.mobile .pvline { font-size: 8px; line-height: 1.45; }
+#app.mobile .pvnote { font-size: 6.8px; }
+#app.mobile .pvicon { width: 46px; height: 58px; font-size: 26px; }
+#app.mobile .pvhint { font-size: 8.5px; line-height: 1.5; }
+
+#app.mobile .myinfo { padding: 5px 7px; }
+#app.mobile .myhead span { font-size: 13px; }
+#app.mobile .myline { display: inline-block; margin: 2px 10px 0 0; font-size: 7.5px; }
+
+#app.mobile .season { padding: 6px 7px; }
+#app.mobile .seasontop span { font-size: 7px; }
+#app.mobile .seasontop b { font-size: 7.5px; }
+#app.mobile .termnow { padding: 4px 0 2px; }
+#app.mobile .termnow b { font-size: 12px; }
+#app.mobile .termnow p { font-size: 8.5px; }
+#app.mobile .termnext { font-size: 8px; }
+
+#app.mobile .mpanel { display: flex; flex-direction: column; gap: 4px; }
+#app.mobile .panelhead { font-size: 7px; padding-bottom: 3px; }
+#app.mobile .weapons { grid-template-columns: 1fr 1fr; gap: 4px; min-height: 0; }
+#app.mobile .wcard { padding: 4px 5px; }
+#app.mobile .wcard .wname { font-size: 10px; }
+#app.mobile .wcard .wstats { font-size: 6.8px; }
+#app.mobile .skills { grid-template-columns: repeat(4, 1fr); gap: 4px; overflow: visible; }
+#app.mobile .skill { padding: 4px; }
+#app.mobile .skill .skname { font-size: 8.5px; }
+#app.mobile .skill .skname i { font-size: 9px; }
+#app.mobile .skill .skcond { font-size: 5.6px; }
+
+#app.mobile .rosterhead { grid-template-columns: 42px repeat(8, 1fr); gap: 2px; flex-basis: 14px; }
+#app.mobile .rhcorner { display: none; }
+#app.mobile .rhcol { font-size: 6.5px; gap: 0; border-bottom-color: #333B3E; }
+#app.mobile .rhcol i { display: none; }
+#app.mobile .roster { gap: 2px; }
+#app.mobile .rrow { grid-template-columns: 42px repeat(8, 1fr); gap: 2px; }
+#app.mobile .rrowhead { padding-left: 2px; }
+#app.mobile .rrowhead b { font-size: 7.5px; }
+#app.mobile .rrowhead span { display: none; }
+#app.mobile .rtile { height: 31px; padding: 1px 2px; gap: 1px; }
+#app.mobile .rport { display: none; }
+#app.mobile .rnm { font-size: 6.2px; line-height: 1.2; }
+#app.mobile .rnm em { font-size: 5.6px; }
+#app.mobile .rstate { font-size: 4.8px; right: 1px; top: 1px; }
+
+#app.mobile .historyPanel { height: 190px; }
+#app.mobile .hhead span { font-size: 10px; }
+#app.mobile .hbody { padding: 3px 7px 6px; }
+#app.mobile .hrow { font-size: 9.5px; line-height: 1.5; }
+
+#app.mobile .screens { padding: 8px; align-items: flex-start; }
+#app.mobile .panel { width: 100%; max-height: none; padding: 16px 15px 18px; margin: 8px 0; }
+#app.mobile .panel h1 { font-size: 26px; }
+#app.mobile .panel .lead { font-size: 11px; }
+#app.mobile .startrow { grid-template-columns: 1fr; gap: 6px; }
+#app.mobile .rulegrid { grid-template-columns: 1fr; gap: 7px; }
+#app.mobile .skillref { grid-template-columns: 1fr; gap: 5px; }
+#app.mobile .resultrow { grid-template-columns: 1fr; gap: 6px; }
+#app.mobile .starttrigrams { gap: 4px; }
+#app.mobile .starttrigrams span { font-size: 9px; padding: 1px 4px; }
+#app.mobile .startbtns { flex-wrap: wrap; }

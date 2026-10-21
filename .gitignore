@@ -1,0 +1,3 @@
+*.bak.*
+wuxing-flat-backup/
+.DS_Store
