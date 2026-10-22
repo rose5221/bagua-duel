@@ -8,7 +8,7 @@
   const TAIJI = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="48" fill="#F7F3E8" stroke="#17191B" stroke-width="2"/><path d="M50 2 A48 48 0 0 1 50 98 A24 24 0 0 1 50 50 A24 24 0 0 0 50 2 Z" fill="#17191B"/><circle cx="50" cy="26" r="7.5" fill="#F7F3E8"/><circle cx="50" cy="74" r="7.5" fill="#17191B"/></svg>';
   const TAIJI_FIRE = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="48" fill="#F7F3E8" stroke="#17191B" stroke-width="2"/><path d="M50 2 A48 48 0 0 1 50 98 A24 24 0 0 1 50 50 A24 24 0 0 0 50 2 Z" fill="#B4472F"/><circle cx="50" cy="26" r="7.5" fill="#F7F3E8"/><circle cx="50" cy="74" r="7.5" fill="#B4472F"/></svg>';
 
-  const S = { g: null, sel: null, mode: null, extra: null, preview: null, difficulty: 'normal', aiTimer: 0, lastTerm: '', lastRound: 0, flash: '', flashTimer: 0 };
+  const S = { g: null, sel: null, mode: null, extra: null, preview: null, pending: null, difficulty: 'normal', aiTimer: 0, lastTerm: '', lastRound: 0, flash: '', flashTimer: 0 };
 
   /* ---------- 天气层 ---------- */
   const FX = (function () {
@@ -65,9 +65,9 @@
         else if (p.kind === 'mist') { const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.s); g.addColorStop(0, 'rgba(180,190,190,.18)'); g.addColorStop(1, 'rgba(180,190,190,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, 6.283); ctx.fill(); }
         else { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = p.color || '#e8d8b0'; ctx.beginPath(); ctx.ellipse(0, 0, p.s, p.s * .5, 0, 0, 6.283); ctx.fill(); ctx.restore(); }
       }
-      drawInk(dt); ctx.globalAlpha = 1; raf = requestAnimationFrame(step);
+      drawInk(dt); drawFloats(dt); ctx.globalAlpha = 1; raf = requestAnimationFrame(step);
     }
-    const inks = [];
+    const inks = []; const floats = [];
     function inkAt(rect) {
       if (!rect) return;
       const cr = cv.getBoundingClientRect();
@@ -91,8 +91,29 @@
         ctx.globalAlpha = 1;
       }
     }
+    function hitAt(rect, text, kill) {
+      if (!rect) return;
+      const cr = cv.getBoundingClientRect();
+      floats.push({ x: rect.left + rect.width / 2 - cr.left, y: rect.top + rect.height / 2 - cr.top, text, kill, life: 1 });
+      inkAt(rect);
+    }
+    function drawFloats(dt) {
+      for (let i = floats.length - 1; i >= 0; i--) {
+        const f = floats[i];
+        f.life -= .018 * dt; f.y -= .7 * dt;
+        if (f.life <= 0) { floats.splice(i, 1); continue; }
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, f.life * 1.7);
+        ctx.textAlign = 'center';
+        ctx.font = (f.kill ? 'bold 34px' : 'bold 24px') + ' "Iowan Old Style", serif';
+        ctx.lineWidth = 3; ctx.strokeStyle = '#F7F3E8'; ctx.strokeText(f.text, f.x, f.y);
+        ctx.fillStyle = f.kill ? '#B4472F' : '#17191B';
+        ctx.fillText(f.text, f.x, f.y);
+        ctx.restore();
+      }
+    }
     function start() { resize(); new ResizeObserver(resize).observe(cv.parentElement); init(); if (!raf) raf = requestAnimationFrame(step); }
-    return { start, setTerm, inkAt };
+    return { start, setTerm, inkAt, hitAt };
   })();
 
   /* ---------- 工具 ---------- */
@@ -182,7 +203,7 @@
 
   function startGame() {
     S.g = E.newGame({ difficulty: S.difficulty });
-    S.sel = null; S.mode = null; S.extra = null; S.preview = null;
+    S.sel = null; S.mode = null; S.extra = null; S.preview = null; S.pending = null;
     S.lastTerm = ''; S.lastRound = 0;
     updateTerm(true);
     renderAll();
@@ -353,6 +374,20 @@
   function renderPreview() {
     const el = $('previewPanel');
     if (!S.g) { el.innerHTML = '<div class="pvhint">点击人物牌、场上单位、武器或技能查看介绍</div>'; return; }
+    if (S.pending && S.sel && S.sel.type === 'unit') {
+      const fc = E.forecast(S.g, HUMAN, S.pending.from, S.pending.to);
+      const a = E.unitAt(S.g, S.pending.from), t = E.unitAt(S.g, S.pending.to);
+      if (fc && a && t) {
+        el.innerHTML = `<div class="fc">
+          <div class="fcnames">${a.card.name} → ${t.card.name}</div>
+          <div class="fcdmg">${fc.dmg}<small> 伤</small></div>
+          <div class="fcbreak">${a.atk} 攻${fc.fieldDmg ? ' · 场地' + (fc.fieldDmg > 0 ? '+1' : '-1') : ''}${fc.over ? ' · 克+1' : ''}${fc.mult > 1 ? ' · ×' + fc.mult : ''}${fc.absorbed ? ' · 盾挡' + fc.absorbed : ''}${fc.armor ? ' · 减伤' + fc.armor : ''}${fc.vuln ? ' · 增伤' + fc.vuln : ''}</div>
+          <div class="fchp">目标 ${t.hp} → ${fc.hpAfter} 血${fc.kill ? ' · <b class="kill">击杀</b>' : ''}${fc.burn ? ' · 灼烧' : ''}</div>
+          <div class="fcconfirm">再点一次「${t.card.name}」确认攻击</div>
+        </div>`;
+        return;
+      }
+    }
     const sc = selectedCard();
     if (sc) {
       const ec = ELEMENTS[sc.element], rc = ELEMENTS[sc.roleElement];
@@ -423,6 +458,7 @@
     if (S.flash) { el.textContent = S.flash; return; }
     if (g.over) { el.textContent = '对局结束'; return; }
     if (g.turn === FOE) { el.innerHTML = '<b>庄家行动中…</b>'; return; }
+    if (S.pending) { el.innerHTML = '再点一次目标确认攻击 · 点别处取消'; return; }
     if (S.mode === 'place') { el.innerHTML = '落子：点一个空席 <span class="sub">或再点一张牌取消</span>'; return; }
     if (S.mode === 'unit') { el.innerHTML = '点红色敌人攻击 · 点蓝色邻位移动 <span class="sub">每张牌本回合一次</span>'; return; }
     if (S.mode === 'equip') { el.innerHTML = '装备：点一张能行动的己方单位'; return; }
@@ -461,7 +497,19 @@
       FX.setTerm(t, S.g.month);
     }
   }
-  function clearSel() { S.sel = null; S.mode = null; S.extra = null; }
+  function showCombo(text, kill) {
+    const el = $('comboBanner');
+    if (!el) return;
+    el.textContent = text + (kill ? ' · 击杀' : '');
+    el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  }
+  function shakeArena() {
+    const el = document.querySelector('.arena');
+    if (!el) return;
+    el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
+    setTimeout(() => el.classList.remove('shake'), 320);
+  }
+  function clearSel() { S.sel = null; S.mode = null; S.extra = null; S.pending = null; }
   function refresh() { renderAll(); updateTerm(false); }
 
   function onCard(cid, mine) {
@@ -473,7 +521,7 @@
     if (p.cardState[cid] !== 'hand') { flashMsg('这张牌已经不在手上'); return; }
     if (S.g.turn !== HUMAN) { S.sel = { type: 'card', id: cid }; S.mode = null; renderAll(); return; }
     if (S.sel && S.sel.type === 'card' && S.sel.id === cid) { clearSel(); renderAll(); return; }
-    S.preview = null;
+    S.preview = null; S.pending = null;
     S.sel = { type: 'card', id: cid };
     S.mode = 'place'; S.extra = null;
     renderAll();
@@ -489,7 +537,7 @@
       clearSel(); refresh(); checkOver(); return;
     }
     if (S.sel && S.sel.type === 'weapon' && S.sel.key === wk) { clearSel(); renderAll(); return; }
-    S.preview = null;
+    S.preview = null; S.pending = null;
     S.sel = { type: 'weapon', key: wk };
     S.mode = 'equip'; S.extra = null;
     renderAll();
@@ -505,7 +553,7 @@
       return;
     }
     if (S.sel && S.sel.type === 'skill' && S.sel.key === key) { clearSel(); renderAll(); return; }
-    S.preview = null;
+    S.preview = null; S.pending = null;
     S.sel = { type: 'skill', key }; S.mode = 'skill'; S.extra = null;
     renderAll();
   }
@@ -526,9 +574,26 @@
     }
     if (S.mode === 'unit' && S.sel && S.sel.slot) {
       if (u && u.owner !== HUMAN && E.attackTargets(g, HUMAN, S.sel.slot).includes(key)) {
+        if (!S.pending || S.pending.from !== S.sel.slot || S.pending.to !== key) {
+          S.pending = { from: S.sel.slot, to: key };
+          renderAll();
+          return;
+        }
+        const fc = E.forecast(g, HUMAN, S.sel.slot, key);
+        const rect = document.querySelector(`.slot[data-slot="${key}"]`)?.getBoundingClientRect();
         const r = E.attack(g, HUMAN, S.sel.slot, key);
         if (!r.ok) { flashMsg(r.msg); return; }
-        FX.inkAt(document.querySelector(`.slot[data-slot="${key}"]`)?.getBoundingClientRect());
+        if (fc) {
+          FX.hitAt(rect, String(fc.dmg), fc.kill);
+          const parts = [];
+          if (fc.over) parts.push('克制 +1');
+          if (fc.fieldDmg) parts.push('场地 ' + (fc.fieldDmg > 0 ? '+1' : '-1'));
+          if (fc.mult > 1) parts.push('入 ×' + fc.mult);
+          if (fc.burn) parts.push('灼烧');
+          if (fc.kill) parts.push('击杀');
+          if (parts.length) showCombo(parts.join(' · '), fc.kill);
+          shakeArena();
+        }
         clearSel(); refresh(); checkOver(); return;
       }
       if (!u && E.moveTargets(g, HUMAN, S.sel.slot).includes(key)) {
@@ -582,7 +647,7 @@
       }
     }
     if (u) {
-      S.preview = null;
+      S.preview = null; S.pending = null;
       S.sel = { type: 'unit', slot: key };
       S.mode = u.owner === HUMAN && E.canUnitAct(g, HUMAN, u) ? 'unit' : null;
       S.extra = null;
@@ -607,7 +672,7 @@
     S.aiTimer = setTimeout(() => {
       if (!S.g || S.g.over || S.g.turn !== FOE) return;
       const r = AI.step(S.g, FOE);
-      S.sel = null; S.mode = null; S.extra = null;
+      S.sel = null; S.mode = null; S.extra = null; S.pending = null;
       refresh();
       if (S.g.over) { setTimeout(showResult, 500); return; }
       if (!r.done) startAI();

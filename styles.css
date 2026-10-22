@@ -414,3 +414,34 @@ button.primary:hover { background: var(--fire); border-color: var(--fire); color
 /* v2 手牌高度收口：两行各 60，避免撑出底栏 */
 .dock .hand { grid-template-rows: repeat(2, 60px); }
 .htile { height: 60px; }
+
+/* 战斗预演 + 击杀反馈 */
+.combobanner {
+  position: fixed; left: 50%; top: 34%; transform: translate(-50%, -50%);
+  z-index: 45; pointer-events: none; opacity: 0; white-space: nowrap;
+  font-size: 20px; letter-spacing: .12em; color: var(--paper0);
+  background: rgba(23,25,27,.86); border: 1px solid var(--metal); padding: 6px 14px;
+}
+.combobanner.show { animation: comboIn 1.2s ease-out forwards; }
+@keyframes comboIn {
+  0% { opacity: 0; transform: translate(-50%,-50%) scale(.92); }
+  15% { opacity: 1; transform: translate(-50%,-50%) scale(1.04); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%,-58%) scale(1); }
+}
+.arena.shake { animation: arenaShake .3s; }
+@keyframes arenaShake {
+  0%,100% { transform: translate(0,0); }
+  20% { transform: translate(-5px,2px); }
+  40% { transform: translate(4px,-3px); }
+  60% { transform: translate(-3px,-1px); }
+  80% { transform: translate(2px,2px); }
+}
+.fc { width: 100%; display: flex; flex-direction: column; gap: 2px; align-self: center; }
+.fcnames { font-size: 10px; color: var(--metal); letter-spacing: .08em; }
+.fcdmg { font-size: 34px; line-height: 1; color: var(--paper0); font-weight: 600; }
+.fcdmg small { font-size: 12px; color: var(--ink4); font-weight: 400; }
+.fcbreak { font-family: var(--mono); font-size: 7.5px; line-height: 1.5; color: var(--ink4); }
+.fchp { font-size: 10px; color: var(--paper1); }
+.fchp .kill { color: var(--fire); }
+.fcconfirm { margin-top: 3px; font-family: var(--mono); font-size: 7.5px; color: var(--fire); }

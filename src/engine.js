@@ -221,6 +221,20 @@
     return { ok: true };
   }
 
+  function forecast(g, pid, fromKey, toKey) {
+    const a = unitAt(g, fromKey), t = unitAt(g, toKey);
+    if (!a || !t || a.owner !== pid || t.owner === pid) return null;
+    const over = ELEMENTS[a.card.element].over === t.card.element;
+    const base = Math.max(0, a.atk + (a.fieldDmg || 0) + (over ? 1 : 0));
+    const mult = a.mult || 1;
+    let dmg = base * mult;
+    const absorbed = Math.min(t.shield, dmg);
+    let afterShield = dmg - absorbed;
+    const armor = t.fieldArmor || 0, vuln = t.fieldVuln || 0;
+    const final = Math.max(0, afterShield - armor + vuln);
+    return { base, mult, over, fieldDmg: a.fieldDmg || 0, absorbed, afterShield, armor, vuln, dmg: final, hpAfter: Math.max(0, t.hp - final), kill: t.hp - final <= 0, burn: !!a.fieldBurnOnHit, range: a.range };
+  }
+
   function attack(g, pid, fromKey, toKey) {
     if (!g || g.over || g.turn !== pid) return { ok: false, msg: '不是你的回合' };
     const a = unitAt(g, fromKey), t = unitAt(g, toKey);
@@ -426,7 +440,7 @@
 
   window.Engine = {
     HUMAN, FOE, HAND, BOARD_MAX, WIN_DEAD, RING, CARDS, WEAPONS, SKILLS, TERMS,
-    newGame, startTurn, startRound, endTurn, place, attack, equip, move, useSkill,
+    newGame, startTurn, startRound, endTurn, place, attack, equip, move, useSkill, forecast,
     skillValid, skillMatches, placement, validSlots, attackTargets, moveTargets,
     equipTargets, skillTargets, rangeEnemies, ownUnits, unitAt, ringDist, adjacent, canUnitAct,
     viewOrder, viewIndex, seatSlot, farSlot, firstPlayer, other, remaining,
