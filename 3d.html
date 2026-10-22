@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>八卦对决 · 3D</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="three.css">
+</head>
+<body class="threebody">
+  <canvas id="scene" aria-label="3D 八卦牌桌"></canvas>
+
+  <div id="hud" class="hud">
+    <header class="hudtop">
+      <div class="hudbrand">八卦对决 <span>3D · 64</span></div>
+      <div class="hudstatus" id="status">未入座</div>
+      <div class="hudactions">
+        <button id="btnRules">规则</button>
+        <button id="btnEnd" disabled>结束回合</button>
+      </div>
+    </header>
+
+    <aside class="hudleft">
+      <div class="hudbox">
+        <div class="hudlabel">武器 · 手牌</div>
+        <div id="weapons" class="hudweapons"></div>
+      </div>
+      <div class="hudbox">
+        <div class="hudlabel">八技能</div>
+        <div id="skills" class="hudskills"></div>
+      </div>
+    </aside>
+
+    <aside class="hudright">
+      <div class="hudbox fieldguide" id="fieldGuide"></div>
+      <div class="hudbox hudlog" id="log"></div>
+    </aside>
+
+    <div class="hudbottom">
+      <div class="hudpreview" id="preview">
+        <div class="hudhint">点击手牌落子 · 点击场上牌攻击或移动</div>
+      </div>
+      <div class="hudprompt" id="prompt"></div>
+    </div>
+  </div>
+
+  <div class="screens" id="screens"></div>
+  <div class="termflash" id="termFlash"></div>
+
+  <script src="src/data.js"></script>
+  <script src="src/engine.js"></script>
+  <script src="src/ai.js"></script>
+  <script type="module" src="src/three3d.js"></script>
+</body>
+</html>

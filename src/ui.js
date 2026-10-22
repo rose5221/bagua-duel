@@ -8,7 +8,7 @@
   const TAIJI = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="48" fill="#F7F3E8" stroke="#17191B" stroke-width="2"/><path d="M50 2 A48 48 0 0 1 50 98 A24 24 0 0 1 50 50 A24 24 0 0 0 50 2 Z" fill="#17191B"/><circle cx="50" cy="26" r="7.5" fill="#F7F3E8"/><circle cx="50" cy="74" r="7.5" fill="#17191B"/></svg>';
   const TAIJI_FIRE = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="48" fill="#F7F3E8" stroke="#17191B" stroke-width="2"/><path d="M50 2 A48 48 0 0 1 50 98 A24 24 0 0 1 50 50 A24 24 0 0 0 50 2 Z" fill="#B4472F"/><circle cx="50" cy="26" r="7.5" fill="#F7F3E8"/><circle cx="50" cy="74" r="7.5" fill="#B4472F"/></svg>';
 
-  const S = { g: null, sel: null, mode: null, extra: null, preview: null, difficulty: 'normal', aiTimer: 0, lastTerm: '', lastRound: 0, flash: '', flashTimer: 0 };
+  const S = { g: null, sel: null, mode: null, extra: null, preview: null, pending: null, difficulty: 'normal', character: 'daotong', charChoice: null, metaSettled: false, aiTimer: 0, lastTerm: '', lastRound: 0, flash: '', flashTimer: 0 };
 
   /* ---------- 天气层 ---------- */
   const FX = (function () {
@@ -65,9 +65,9 @@
         else if (p.kind === 'mist') { const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.s); g.addColorStop(0, 'rgba(180,190,190,.18)'); g.addColorStop(1, 'rgba(180,190,190,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, 6.283); ctx.fill(); }
         else { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = p.color || '#e8d8b0'; ctx.beginPath(); ctx.ellipse(0, 0, p.s, p.s * .5, 0, 0, 6.283); ctx.fill(); ctx.restore(); }
       }
-      drawInk(dt); ctx.globalAlpha = 1; raf = requestAnimationFrame(step);
+      drawInk(dt); drawFloats(dt); ctx.globalAlpha = 1; raf = requestAnimationFrame(step);
     }
-    const inks = [];
+    const inks = []; const floats = [];
     function inkAt(rect) {
       if (!rect) return;
       const cr = cv.getBoundingClientRect();
@@ -91,8 +91,29 @@
         ctx.globalAlpha = 1;
       }
     }
+    function hitAt(rect, text, kill) {
+      if (!rect) return;
+      const cr = cv.getBoundingClientRect();
+      floats.push({ x: rect.left + rect.width / 2 - cr.left, y: rect.top + rect.height / 2 - cr.top, text, kill, life: 1 });
+      inkAt(rect);
+    }
+    function drawFloats(dt) {
+      for (let i = floats.length - 1; i >= 0; i--) {
+        const f = floats[i];
+        f.life -= .018 * dt; f.y -= .7 * dt;
+        if (f.life <= 0) { floats.splice(i, 1); continue; }
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, f.life * 1.7);
+        ctx.textAlign = 'center';
+        ctx.font = (f.kill ? 'bold 34px' : 'bold 24px') + ' "Iowan Old Style", serif';
+        ctx.lineWidth = 3; ctx.strokeStyle = '#F7F3E8'; ctx.strokeText(f.text, f.x, f.y);
+        ctx.fillStyle = f.kill ? '#B4472F' : '#17191B';
+        ctx.fillText(f.text, f.x, f.y);
+        ctx.restore();
+      }
+    }
     function start() { resize(); new ResizeObserver(resize).observe(cv.parentElement); init(); if (!raf) raf = requestAnimationFrame(step); }
-    return { start, setTerm, inkAt };
+    return { start, setTerm, inkAt, hitAt };
   })();
 
   /* ---------- 工具 ---------- */
@@ -115,29 +136,167 @@
 
   /* ---------- 开始 / 规则 / 结算 ---------- */
   function showStart() {
+    closeSheets();
     const el = $('screens');
+    const meta = window.Meta;
+    const charOpen = c => meta ? meta.characterOpen(c.key) : c.open;
+    const charTag = c => meta ? meta.characterTag(c.key) : c.tag;
+    if (meta) {
+      if (!meta.get().run.active) meta.resetRun();
+      const currentRun = meta.get().run;
+      if (currentRun.locked && currentRun.character && meta.characterOpen(currentRun.character)) S.character = currentRun.character;
+      else {
+        const saved = meta.get().character;
+        if (meta.characterOpen(saved)) S.character = saved;
+        else if (!meta.characterOpen(S.character)) S.character = 'daotong';
+      }
+    }
+    const streak = meta ? meta.get().oldYinStreak : 0;
+    const chierOpen = !!(meta && meta.characterOpen('chier'));
+    const run = meta ? meta.get().run : null;
+    const locked = !!(run && run.locked);
+    const runH = meta ? meta.aliveHuns().length : 3;
+    const runP = meta ? meta.alivePos().length : 7;
     el.innerHTML = `<div class="panel startpanel">
       <div class="kick">BAGUA DUEL · 64</div>
       <h1>八卦对决</h1>
-      <p class="lead">两个人面对面，中间一张八卦盘；开局纯黑，方位随机。<br>每人 2 个属性、各随机 4 张人物牌，共 8 张；场上最多 3 张。</p>
+      <p class="lead">两个人面对面，中间一张八卦盘；开局纯黑，方位随机。<br>每人 4 属性 × 8 张 = 32 张牌库；单局准备选 2 属性 × 4 张 = 8 张出战；场上最多 3 张。</p>
       <div class="startrow">
         <div class="startbox"><b>行动</b><span>每回合落 1 张人物牌；场上每张牌各攻击 / 装备 / 移动一次；技能最多 2 张。</span></div>
         <div class="startbox"><b>场地</b><span>每轮开始按卦位五行触发：相生、同五行、相克各有不同效果。</span></div>
         <div class="startbox"><b>胜负</b><span>一方 8 张人物牌全部失去即负。</span></div>
       </div>
       <div class="starttrigrams">${D.ATTRS.map(a => `<span style="--c:${ELEMENTS[a.element].color}">${a.sym} ${a.name}</span>`).join('')}</div>
+      <div class="charhead">角色</div>
+      <div class="charpick">${D.CHARACTERS.map(c => {
+        const open = charOpen(c);
+        const lockedOut = locked && c.key !== S.character;
+        const tag = locked ? (c.key === S.character ? '已锁' : '锁定') : charTag(c);
+        return `<button class="charpick-btn ${S.character === c.key ? 'sel' : ''}" data-char="${c.key}" ${open && !lockedOut ? '' : 'disabled'}><b>${c.name}</b><span>${c.desc}</span><i>${tag}</i></button>`;
+      }).join('')}</div>
+      <div class="charstreak">${locked ? '角色已锁定 · 整条弈魂不可更换' : chierOpen ? '痴儿已解锁 · 可在上方直接选择' : streak ? `道童老阴连续 ${streak}/3 · 再成一次解锁痴儿` : '痴儿：道童卜卦连续三次老阴后解锁'}</div>
+      <div class="runmeta">弈魂 · 第 ${run ? run.round : 1} 局 · 魂 ${runH}/3 · 魄 ${runP}/7 · 献祭 ${run ? run.sacrifices : 0}</div>
       <div class="diffhead">人机难度</div>
       <div class="diffbtns">${DIFFICULTY.map(d => `<button class="diff ${S.difficulty === d.key ? 'sel' : ''}" data-diff="${d.key}"><b>${d.name}</b><span>${d.desc}</span></button>`).join('')}</div>
-      <div class="startbtns"><button class="primary" id="btnStart">入座</button><button id="btnRules2">规则</button></div>
-      <div class="startfoot">坐北朝南先手 · 人物牌暂时使用程序化占位</div>
+      <div class="startbtns"><button class="primary" id="btnStart">选牌入座</button><button id="btnRules2">规则</button></div>
+      <div class="startfoot">${chierOpen ? '四角色均可选' : '坐北朝南先手 · 道童 / 清风 / 旁门可选；痴儿连续三次老阴解锁'} · 单局准备选 2 属性 × 4 张</div>
     </div>`;
     el.classList.add('show');
     el.querySelectorAll('.diff').forEach(b => b.onclick = () => {
       S.difficulty = b.dataset.diff;
       el.querySelectorAll('.diff').forEach(x => x.classList.toggle('sel', x === b));
     });
-    $('btnStart').onclick = () => { el.classList.remove('show'); startGame(); };
+    el.querySelectorAll('.charpick-btn').forEach(b => b.onclick = () => {
+      if (b.disabled) return;
+      S.character = b.dataset.char;
+      if (meta) meta.selectCharacter(S.character);
+      el.querySelectorAll('.charpick-btn').forEach(x => x.classList.toggle('sel', x === b));
+    });
+    $('btnStart').onclick = () => { el.classList.remove('show'); showPrep(); };
     $('btnRules2').onclick = showRules;
+  }
+
+  function prepValid() {
+    const p = S.prep;
+    if (!p || p.chosenAttrs.length !== 2) return false;
+    return p.chosenAttrs.every(a => p.cards.filter(cid => CARDS[cid].attrKey === a).length === 4);
+  }
+
+  function showPrep() {
+    closeSheets();
+    const el = $('screens');
+    const attrs = D.ATTRS.map(a => a.key);
+    for (let i = attrs.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[attrs[i], attrs[j]] = [attrs[j], attrs[i]]; }
+    S.prep = { attrs: attrs.slice(0, 4), chosenAttrs: [], cards: [] };
+    renderPrep();
+  }
+
+  function renderPrep() {
+    const el = $('screens');
+    const p = S.prep;
+    if (!p) return;
+    const prevPanel = el.querySelector('.preppanel');
+    const prevScroll = prevPanel ? prevPanel.scrollTop : 0;
+    const count = a => p.cards.filter(cid => CARDS[cid].attrKey === a).length;
+    const total = p.cards.length;
+    const valid = prepValid();
+    const attrButtons = p.attrs.map(a => {
+      const def = D.ATTR_BY_KEY[a], ec = ELEMENTS[def.element];
+      const on = p.chosenAttrs.includes(a);
+      const n = count(a);
+      return `<button class="prepatt ${on ? 'sel' : ''}" data-prep-attr="${a}" style="--c:${ec.color}"><b>${def.sym} ${def.name}</b><span>${ec.name} · ${n}/4</span></button>`;
+    }).join('');
+    let cardsHtml = '';
+    if (p.chosenAttrs.length) {
+      cardsHtml = `<div class="prepgrid">${p.chosenAttrs.map(a => {
+        const def = D.ATTR_BY_KEY[a], ec = ELEMENTS[def.element];
+        const ids = D.ROLES.map(r => a + '-' + r.key);
+        return `<section class="prepcol" style="--c:${ec.color}"><div class="prepcolhead"><b>${def.sym} ${def.name}</b><span>${count(a)}/4</span></div><div class="prepcards">${ids.map(cid => {
+          const c = CARDS[cid], on = p.cards.includes(cid), full = count(a) >= 4 && !on;
+          return `<button class="prepcard ${on ? 'sel' : ''}" data-prep-card="${cid}" ${full ? 'disabled' : ''}>
+            <span class="prepport">${D.portraitHtml(c, 34, 45, 'prep-portrait')}</span>
+            <span class="prepname">${c.role}</span><span class="prepstat">${c.atk}/${c.hp}</span>
+          </button>`;
+        }).join('')}</div></section>`;
+      }).join('')}</div>`;
+    } else {
+      cardsHtml = '<div class="prephint">先选 2 个属性；再从每个属性里选 4 张人物牌。</div>';
+    }
+    el.innerHTML = `<div class="panel preppanel">
+      <div class="kick">单局准备</div>
+      <h2>选出战 8 张</h2>
+      <p class="preplead">从 4 个属性中选 2 个，再从每个属性选 4 张。未出战的 24 张留在牌库。</p>
+      <div class="prepattrs">${attrButtons}</div>
+      ${cardsHtml}
+      <div class="prepbar">
+        <span class="prepcount">已选 ${total}/8 · ${p.chosenAttrs.length}/2 属性</span>
+        <span class="prepactions">
+          <button id="prepRandom">随机出战</button>
+          <button id="prepCancel">返回</button>
+          <button class="primary" id="prepStart" ${valid ? '' : 'disabled'}>入座</button>
+        </span>
+      </div>
+    </div>`;
+    el.classList.add('show');
+    const panel = el.querySelector('.preppanel');
+    if (panel && prevScroll) panel.scrollTop = prevScroll;
+    el.querySelectorAll('[data-prep-attr]').forEach(b => b.onclick = () => {
+      const a = b.dataset.prepAttr;
+      if (p.chosenAttrs.includes(a)) {
+        p.chosenAttrs = p.chosenAttrs.filter(x => x !== a);
+        p.cards = p.cards.filter(cid => CARDS[cid].attrKey !== a);
+      } else if (p.chosenAttrs.length < 2) {
+        p.chosenAttrs.push(a);
+      } else {
+        flashMsg('只能选 2 个属性');
+        return;
+      }
+      renderPrep();
+    });
+    el.querySelectorAll('[data-prep-card]').forEach(b => b.onclick = () => {
+      const cid = b.dataset.prepCard, a = CARDS[cid].attrKey;
+      const idx = p.cards.indexOf(cid);
+      if (idx >= 0) p.cards.splice(idx, 1);
+      else {
+        if (count(a) >= 4) { flashMsg('该属性已选满 4 张'); return; }
+        p.cards.push(cid);
+      }
+      renderPrep();
+    });
+    $('prepRandom').onclick = () => {
+      const chosen = p.attrs.slice();
+      for (let i = chosen.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[chosen[i], chosen[j]] = [chosen[j], chosen[i]]; }
+      p.chosenAttrs = chosen.slice(0, 2);
+      p.cards = [];
+      for (const a of p.chosenAttrs) {
+        const ids = D.ROLES.map(r => a + '-' + r.key).slice();
+        for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[ids[i], ids[j]] = [ids[j], ids[i]]; }
+        p.cards.push(...ids.slice(0, 4));
+      }
+      startGame();
+    };
+    $('prepCancel').onclick = () => { el.classList.remove('show'); S.prep = null; showStart(); };
+    $('prepStart').onclick = () => { if (!prepValid()) return; startGame(); };
   }
 
   function showRules() {
@@ -145,11 +304,12 @@
     el.innerHTML = `<div class="panel rulespanel">
       <div class="phead"><h2>规则</h2><button id="rulesClose">收起</button></div>
       <div class="rulegrid">
-        <div><b>牌组</b><p>8 属性 × 8 家庭成员共 64 张。每人随机 2 个属性，每个属性随机 4 张，共 8 张；场上最多 3 张。</p></div>
+        <div><b>牌组</b><p>8 属性 × 8 家庭成员共 64 张。每人随机 4 个属性组成 32 张牌库；单局准备从中选 2 属性 × 4 张 = 8 张；场上最多 3 张。</p></div>
         <div><b>落子</b><p>每回合 1 张。牌属性与席同五行 +2 攻/+4 血；席生牌 +4 血；席克牌 -2 攻；家庭物象与席同五行 +2 攻/+4 血。移动不触发这些。</p></div>
         <div><b>行动</b><p>场上每张牌每回合可攻击一次、获得一件装备、或移动到相邻空位，三选一。新落的牌当回合不能行动，但可以被攻击。</p></div>
         <div><b>攻击</b><p>空手/近战/盾牌打邻位，远程和长枪打距离 2。相生正常；克制方对被克方伤害 +1。无反击。</p></div>
         <div><b>技能</b><p>每回合最多 2 张且不能重复；每张技能整局 2 次。目标带对应属性/家庭成员时增强。</p></div>
+        <div><b>角色</b><p>开始界面选择。当前道童每回合可求签一次、卜卦一次，均不占人物行动，也不消耗技能卡次数；求签签文只在角色面板显示。清风/旁门/痴儿随三魂七魄多局流程开放。</p></div>
         <div><b>胜负</b><p>一方 8 张人物牌全部失去，立即结束。</p></div>
       </div>
       <div class="fieldguide"><div class="fghead">场地 · 每轮开始</div>${FIELD_RULES.map(f => `<div class="fgrow" style="--c:${ELEMENTS[f.el].color}"><b>${ELEMENTS[f.el].name}</b><span>生：${f.gen}</span><span>同：${f.equal}</span><span>克：${f.over}</span></div>`).join('')}</div>
@@ -160,10 +320,55 @@
     $('rulesClose').onclick = () => { if (!S.g) showStart(); else el.classList.remove('show'); };
   }
 
-  function showResult() {
+  function showResult(silent, metaMsg) {
     const g = S.g; if (!g) return;
+    closeSheets();
     const win = g.winner === HUMAN;
     const el = $('screens');
+    const meta = window.Meta;
+    if (meta) {
+      for (const k of g.lostHuns || []) meta.loseHun(k);
+      for (const k of g.pseudoPos || []) meta.markPseudoPos(k);
+    }
+    const run = meta ? meta.get().run : null;
+    const aliveH = meta ? meta.aliveHuns() : [];
+    const aliveP = meta ? meta.alivePos() : [];
+    const failed = meta ? (aliveH.length <= 1 && aliveP.length <= 1) : false;
+    if (failed) meta.failRun();
+    const soulNames = { tian: '天魂', di: '地魂', ren: '人魂' };
+    const posNames = { shigou: '尸狗', fushi: '伏矢', queyin: '雀阴', tunzei: '吞贼', feidu: '非毒', chuhui: '除秽', choufei: '臭肺' };
+    let metaHtml = '';
+    if (meta && run) {
+      metaHtml = `<div class="metaline"><b>弈魂 · 第 ${run.round} 局</b><span>魂 ${aliveH.length}/3 · 魄 ${aliveP.length}/7 · 献祭 ${run.sacrifices}</span></div>`;
+      if (failed) {
+        metaHtml += `<div class="metafail"><b>全局失败</b><span>三魂七魄已断，整条弈魂到此为止。</span></div>`;
+      } else if (metaMsg) {
+        metaHtml += `<div class="metamsg">${metaMsg}</div>`;
+      } else if (!win && !S.metaSettled) {
+        metaHtml += `<div class="metachoice"><div>败者结算：失一魂，或失两魄；三魂至少留其一。</div><div class="metabtns">
+          <button data-loss="hun" ${aliveH.length <= 1 ? 'disabled' : ''}>失一魂</button>
+          <button data-loss="pos" ${aliveP.length < 2 ? 'disabled' : ''}>失两魄</button>
+        </div></div>`;
+      } else if (win && g.character === 'pangmen' && E.ownUnits(g, HUMAN).length === 3) {
+        const lostReal = Object.keys(run.pos).filter(k => run.pos[k].lost && !run.pos[k].pseudo);
+        metaHtml += `<div class="metachoice"><div>夺魄：胜利时场上仍有 3 张，可选一个已空缺的魄位炼为伪魄。</div>${lostReal.length
+          ? `<div class="metabtns">${lostReal.map(k => `<button data-seize="${k}">${posNames[k]} → 伪魄</button>`).join('')}</div>`
+          : '<span class="metamsg">你的七魄没有空缺，无法炼伪。</span>'}</div>`;
+      }
+      if (!failed && !win && S.metaSettled) {
+        const lostRealH = Object.keys(run.souls).filter(k => run.souls[k].lost && !run.souls[k].pseudo);
+        const lostRealP = Object.keys(run.pos).filter(k => run.pos[k].lost && !run.pos[k].pseudo);
+        const attrsLeft = D.ATTRS.filter(a => (!run.lastAttrs || !run.lastAttrs.length || run.lastAttrs.includes(a.key)) && run.usedSacrificeAttrs.filter(x => x === a.key).length < 2);
+        if (lostRealH.length || lostRealP.length) {
+          metaHtml += `<div class="metachoice sacbox"><div>献祭窗口：每次消耗一个属性的 4 张牌；伪魂需累计 2 次，伪魄需累计 1 次。</div>
+            <div class="metabtns sacattrs">${attrsLeft.map(a => `<button data-sacrifice="${a.key}">${a.sym} ${a.name}</button>`).join('') || '<span class="metamsg">四属性已献尽</span>'}</div>
+            <div class="metabtns">${lostRealH.map(k => `<button data-pseudo-hun="${k}" ${run.sacrifices < 2 ? 'disabled' : ''}>${soulNames[k]} → 伪魂</button>`).join('')}${lostRealP.map(k => `<button data-pseudo-pos="${k}" ${run.sacrifices < 1 ? 'disabled' : ''}>${posNames[k]} → 伪魄</button>`).join('')}</div>
+          </div>`;
+        }
+      }
+    }
+    const canNext = meta && !failed && (win || S.metaSettled);
+    const canLeave = !meta || win || S.metaSettled || failed;
     el.innerHTML = `<div class="panel resultpanel">
       <div class="kick">${win ? 'WIN' : 'LOSE'}</div>
       <h1>${win ? '你赢了' : '庄家赢了'}</h1>
@@ -173,16 +378,99 @@
         <div><b>庄家</b><span>余 ${E.remaining(g.players[1])} / 8</span></div>
         <div><b>历时</b><span>${g.turnNo} 手 · ${g.round} 轮</span></div>
       </div>
-      <div class="startbtns"><button class="primary" id="btnAgain">再来一局</button><button id="btnMenu">回到封面</button></div>
+      ${metaHtml}
+      <div class="startbtns">
+        ${canNext ? '<button class="primary" id="btnNext">下一局</button>' : ''}
+        ${failed ? '<button class="primary" id="btnResetMeta">重开弈魂</button>' : ''}
+        ${canLeave ? '<button id="btnMenu">回到封面</button>' : ''}
+      </div>
+      <div class="metafoot">三魂：${meta ? aliveH.map(k => soulNames[k]).join('、') || '尽失' : '—'} · 七魄：${meta ? aliveP.map(k => posNames[k]).join('、') || '尽失' : '—'}</div>
     </div>`;
     el.classList.add('show');
-    $('btnAgain').onclick = () => { el.classList.remove('show'); startGame(); };
-    $('btnMenu').onclick = () => { S.g = null; S.sel = null; showStart(); };
+    if (!silent) document.dispatchEvent(new CustomEvent('bagua:result', { detail: { win, g } }));
+    el.querySelectorAll('[data-loss]').forEach(b => b.onclick = () => {
+      if (!meta) return;
+      const kind = b.dataset.loss;
+      if (kind === 'hun') {
+        const keys = meta.aliveHuns();
+        if (keys.length <= 1) return;
+        const k = keys[Math.floor(Math.random() * keys.length)];
+        meta.loseHun(k);
+        S.metaSettled = true;
+        showResult(true, `你失去了${soulNames[k]}。`);
+      } else {
+        const keys = meta.alivePos();
+        if (keys.length < 2) return;
+        const pool = keys.slice();
+        const lost = [];
+        for (let i = 0; i < 2; i++) {
+          const idx = Math.floor(Math.random() * pool.length);
+          lost.push(pool.splice(idx, 1)[0]);
+        }
+        lost.forEach(k => meta.losePos(k));
+        S.metaSettled = true;
+        showResult(true, `你失去了${lost.map(k => posNames[k]).join('、')}。`);
+      }
+    });
+    el.querySelectorAll('[data-seize]').forEach(b => b.onclick = () => {
+      if (!meta) return;
+      const k = b.dataset.seize;
+      if (meta.gainPseudoPos(k)) showResult(true, `夺魄：${posNames[k]}已炼为伪魄，其失魄效果清除。`);
+    });
+    el.querySelectorAll('[data-sacrifice]').forEach(b => b.onclick = () => {
+      if (!meta) return;
+      const a = b.dataset.sacrifice;
+      const def = D.ATTR_BY_KEY[a];
+      if (meta.sacrifice(a)) showResult(true, `献祭${def ? def.name : a}属性：消耗 4 张，累计 ${meta.get().run.sacrifices} 次。`);
+    });
+    el.querySelectorAll('[data-pseudo-hun]').forEach(b => b.onclick = () => {
+      if (!meta) return;
+      const k = b.dataset.pseudoHun;
+      if (meta.makePseudoSoul(k)) showResult(true, `${soulNames[k]}已炼为伪魂，失魂增益/减益清除。`);
+    });
+    el.querySelectorAll('[data-pseudo-pos]').forEach(b => b.onclick = () => {
+      if (!meta) return;
+      const k = b.dataset.pseudoPos;
+      if (meta.makePseudoPos(k)) showResult(true, `${posNames[k]}已炼为伪魄，失魄增益/减益清除。`);
+    });
+    const next = $('btnNext');
+    if (next) next.onclick = () => {
+      el.classList.remove('show');
+      if (meta) meta.startNextRound();
+      showPrep();
+    };
+    const reset = $('btnResetMeta');
+    if (reset) reset.onclick = () => {
+      if (meta) meta.resetRun();
+      el.classList.remove('show');
+      S.g = null; showStart();
+    };
+    const menu = $('btnMenu');
+    if (menu) menu.onclick = () => { el.classList.remove('show'); S.g = null; S.sel = null; showStart(); };
   }
 
   function startGame() {
-    S.g = E.newGame({ difficulty: S.difficulty });
-    S.sel = null; S.mode = null; S.extra = null; S.preview = null;
+    closeSheets();
+    if (window.Meta) {
+      window.Meta.selectCharacter(S.character);
+      window.Meta.lockCharacter(S.character);
+    }
+    const mods = window.Meta ? window.Meta.gameMods() : {};
+    const run = window.Meta ? window.Meta.get().run : null;
+    const lostHuns = run ? Object.keys(run.souls).filter(k => run.souls[k].lost && !run.souls[k].pseudo) : [];
+    const prep = S.prep;
+    if (window.Meta && prep) {
+      window.Meta.get().run.lastAttrs = prep.attrs.slice();
+      window.Meta.save();
+    }
+    S.g = E.newGame({
+      difficulty: S.difficulty, character: S.character, mods, lostHuns,
+      p0Attrs: prep ? prep.attrs : undefined,
+      p0Cards: prep ? prep.cards.slice() : undefined,
+    });
+    S.prep = null;
+    $('screens').classList.remove('show');
+    S.sel = null; S.mode = null; S.extra = null; S.preview = null; S.pending = null; S.charChoice = null; S.metaSettled = false;
     S.lastTerm = ''; S.lastRound = 0;
     updateTerm(true);
     renderAll();
@@ -193,8 +481,8 @@
   function renderAll() {
     if (!S.g) return;
     renderSeatbar(); renderStatus(); renderOppPublic(); renderMyFigure(); renderInfo();
-    renderWeapons(); renderSkills(); renderBoard(); renderHand(); renderPreview();
-    renderPrompt(); renderSeason(); renderHistory();
+    renderWeapons(); renderSkills(); renderCharacter(); renderBoard(); renderHand(); renderPreview();
+    renderPrompt(); renderSeason(); renderHistory(); renderQuickbar();
     $('btnEnd').disabled = !(S.g.turn === HUMAN && !S.g.over);
   }
 
@@ -231,14 +519,24 @@
       <div class="myline">场上 <b>${board}</b>/${E.BOARD_MAX} · 武器 <b>${p.weapons.length}</b> · 技能 <b>${g.skillsLeft}</b></div>`;
   }
 
+  function weaponIconHtml(key, cls) {
+    const store = window.WeaponSkinStore;
+    if (!store || !store.icon) return '';
+    return `<img class="${cls || ''}" src="${store.icon(key)}" alt="">`;
+  }
+
   function renderWeapons() {
     const p = S.g.players[HUMAN], el = $('weapons');
     if (!p.weapons.length) { el.innerHTML = '<div class="emptyhint">没有装备</div>'; return; }
     el.innerHTML = p.weapons.map(wk => {
       const w = D.WEAPON_BY_KEY[wk], sel = S.sel && S.sel.type === 'weapon' && S.sel.key === wk;
       return `<button class="wcard ${sel ? 'sel' : ''}" data-weapon="${wk}">
-        <span class="wname">${w.name}</span><span class="wtype">${w.type === 'melee' ? '近战' : w.type === 'ranged' ? '远程' : '盾'}${w.range > 1 ? ' · 距2' : ''}</span>
-        <span class="wstats">${w.atk ? '攻' + (w.atk > 0 ? '+' : '') + w.atk : ''}${w.hp ? ' 血' + (w.hp > 0 ? '+' : '') + w.hp : ''}${w.shield ? ' 盾' + w.shield : ''}</span>
+        ${weaponIconHtml(wk, 'wicon')}
+        <span class="wtext">
+          <span class="wname">${w.name}</span>
+          <span class="wtype">${w.type === 'melee' ? '近战' : w.type === 'ranged' ? '远程' : '盾'}${w.range > 1 ? ' · 距2' : ''}</span>
+          <span class="wstats">${w.atk ? '攻' + (w.atk > 0 ? '+' : '') + w.atk : ''}${w.hp ? ' 血' + (w.hp > 0 ? '+' : '') + w.hp : ''}${w.shield ? ' 盾' + w.shield : ''}</span>
+        </span>
       </button>`;
     }).join('');
   }
@@ -256,6 +554,156 @@
     }).join('');
   }
 
+  function renderCharacter() {
+    const wrap = $('charSkills');
+    if (!wrap || !S.g) return;
+    const g = S.g;
+    const ch = D.CHARACTERS.find(c => c.key === g.character) || D.CHARACTERS[0];
+    const myTurn = g.turn === HUMAN && !g.over;
+    const res = g.charResult;
+    const skills = ch.skills.map(key => {
+      const sk = D.CHAR_SKILLS[key];
+      const onceGame = key === 'avatar' || key === 'clone' || key === 'seize';
+      const used = onceGame ? !!g.charUsedGame[key] : !!g.charUsed[key];
+      const onBoard = (key === 'avatar' || key === 'clone') && g.summon && g.summon.type === key;
+      const dis = used || !myTurn || key === 'seize' || ((key === 'avatar' || key === 'clone') && !!g.summon);
+      const sub = key === 'sign' ? '系统判签' : key === 'divine' ? '三枚铜钱'
+        : key === 'avatar' ? '选一魂入场' : key === 'clone' ? '选一魄入场' : '胜利结算';
+      const state = onBoard ? '在场' : used ? '已用' : sk.limit;
+      return `<button class="cskill ${used ? 'used' : ''}" data-cskill="${key}" ${dis ? 'disabled' : ''} title="${sk.desc}">
+        <b>${sk.name}</b><i>${state}</i><span>${sub}</span>
+      </button>`;
+    }).join('');
+    let choiceHtml = '';
+    if (S.charChoice && myTurn) {
+      const isAvatar = S.charChoice.type === 'avatar';
+      const run = window.Meta ? window.Meta.get().run : null;
+      const list = (isAvatar ? D.HUNS : D.POS).filter(x => {
+        if (!run) return true;
+        const st = isAvatar ? run.souls[x.key] : run.pos[x.key];
+        return st && !st.lost;
+      });
+      choiceHtml = `<div class="cchoice">
+        <div class="cchoicehead">${isAvatar ? '选一魂化为化身（木 · 20/40 · 不占上限）' : '选一魄化为分身（金 · 20/30 · 占上限）'}</div>
+        <div class="cchoicegrid">${list.map(x => `<button data-summon="${x.key}"><b>${x.name}</b><span>${isAvatar ? x.effect : '分身无额外特效；阵亡后转伪魄'}</span></button>`).join('')}</div>
+        <button class="cchoicecancel" data-char-cancel>取消</button>
+      </div>`;
+    }
+    let resHtml;
+    if (res && res.kind === 'sign') {
+      resHtml = `<div class="charres ${res.tone || 'plain'}"><b>${res.tier}</b><span>${res.effect}</span><i>${res.reason || ''}</i></div>`;
+    } else if (res && res.kind === 'divine') {
+      resHtml = `<div class="charres divine"><div class="coins">${res.coins.map((c, i) => `<i class="${c === '背' ? 'yang' : 'yin'}" style="--d:${i}">${c}</i>`).join('')}</div><b>${res.type}</b><span>${res.effect}${res.kills ? ` · 击杀 ${res.kills}` : ''}</span></div>`;
+    } else if (g.summon) {
+      resHtml = `<div class="charres plain"><b>${g.summon.type === 'avatar' ? '化身在场' : '分身在场'}</b><span>${g.summon.name} · 与另一形态不可同时在场</span></div>`;
+    } else if (g.character === 'qingfeng') {
+      resHtml = `<div class="charhint">化身不占 3 张上限，木 20/40；分身占上限，金 20/30。两者每局各一次、不可同时在场。化身阵亡失去对应魂；分身阵亡该魄转伪。</div>`;
+    } else if (g.character === 'pangmen') {
+      resHtml = `<div class="charhint">炼魂：每回合开始己方场上 +1 攻 / -2 血。夺魄在胜利结算时触发。</div>`;
+    } else if (g.character === 'chier') {
+      resHtml = `<div class="charhint">痴相：己方受伤 -4（蠢笨 + 愚痴）；每回合最多 2 张己方牌攻击且这两次 +2 伤害；推荐提示已隐去。本回合已攻击 ${g.chierAttacks || 0}/2。</div>`;
+    } else {
+      resHtml = `<div class="charhint">每回合各 1 次，不占人物行动；求签结果只有你可见。</div>`;
+    }
+    wrap.innerHTML = `<div class="charwho"><b>${ch.name}</b><span>${ch.passive}</span></div><div class="cskills">${skills}</div>${choiceHtml}${resHtml}`;
+  }
+
+  function renderQuickbar() {
+    const bar = $('quickbar');
+    if (!bar) return;
+    if (!S.g) { bar.classList.add('hidden'); return; }
+    bar.classList.remove('hidden');
+    const g = S.g, p = g.players[HUMAN];
+    const myTurn = g.turn === HUMAN && !g.over;
+    const cancel = !!(S.sel || S.pending);
+    const wc = $('qWeaponCount'), sc = $('qSkillCount'), end = $('btnQuickEnd');
+    if (wc) { wc.textContent = p.weapons.length; wc.classList.toggle('zero', p.weapons.length === 0); }
+    if (sc) { sc.textContent = g.skillsLeft; sc.classList.toggle('zero', g.skillsLeft === 0); }
+    if (end) {
+      end.disabled = !(myTurn || cancel);
+      end.classList.toggle('cancel', cancel);
+      end.innerHTML = cancel ? '<b>返</b><span>取消</span>' : myTurn ? '<b>终</b><span>结束</span>' : '<b>…</b><span>等待</span>';
+    }
+  }
+
+  function sheetDetailEl(kind) { return $(kind === 'weapon' ? 'weaponDetail' : 'skillDetail'); }
+  function sheetError(kind, msg) {
+    const el = sheetDetailEl(kind);
+    if (el) el.innerHTML = `<b class="sderr">${msg}</b>`;
+  }
+  function showSheetDetail(kind, key) {
+    const el = sheetDetailEl(kind);
+    if (!el) return;
+    const box = $(kind === 'weapon' ? 'weapons' : 'skills');
+    if (box) box.querySelectorAll('.inspect').forEach(x => x.classList.remove('inspect'));
+    if (!key) {
+      el.innerHTML = `<span class="sdhint">${kind === 'weapon' ? '单击查看武器，双击后选择场上角色装备。' : '单击查看技能，双击后选择场上角色施放。'}</span>`;
+      return;
+    }
+    const g = S.g;
+    if (kind === 'weapon') {
+      const w = D.WEAPON_BY_KEY[key];
+      if (!w) return;
+      const card = box && box.querySelector(`[data-weapon="${key}"]`);
+      if (card) card.classList.add('inspect');
+      const targets = g ? E.equipTargets(g, HUMAN).length : 0;
+      el.innerHTML = `<b>${w.name}</b><span class="sdmeta">${w.type === 'melee' ? '近战' : w.type === 'ranged' ? '远程' : '盾牌'}${w.range > 1 ? ' · 距离 2' : ''} · ${w.atk ? '攻' + (w.atk > 0 ? '+' : '') + w.atk + ' ' : ''}${w.hp ? '血' + (w.hp > 0 ? '+' : '') + w.hp + ' ' : ''}${w.shield ? '盾' + w.shield : ''}</span><div>${w.desc}</div><div class="sdhint">双击装备 · 当前可装备单位 ${targets} 张</div>`;
+      return;
+    }
+    const sk = D.SKILL_BY_KEY[key], p = g ? g.players[HUMAN] : null;
+    if (!sk) return;
+    const card = box && box.querySelector(`[data-skill="${key}"]`);
+    if (card) card.classList.add('inspect');
+    const left = p ? 2 - (p.skillUses[key] || 0) : 2;
+    el.innerHTML = `<b>${sk.name}</b><span class="sdmeta">${sk.attr}/${sk.role} · 整局剩余 ${left}/2 · ${g && g.skillsUsedThisTurn[key] ? '本手已用' : '本手可用'}</span><div>${sk.desc}</div><div class="sdhint">双击后选择场上角色施放；不想用点“返回”。</div>`;
+  }
+  function openSheet(kind) {
+    if (!S.g || S.g.over) return;
+    closeSheets();
+    const sheet = $(kind === 'weapon' ? 'weaponSheet' : 'skillSheet');
+    if (!sheet) return;
+    sheet.classList.add('show');
+    sheet.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('px-sheet-open');
+    showSheetDetail(kind, null);
+  }
+  function closeSheets() {
+    for (const id of ['weaponSheet', 'skillSheet']) {
+      const el = $(id);
+      if (!el) continue;
+      el.classList.remove('show');
+      el.setAttribute('aria-hidden', 'true');
+    }
+    document.body.classList.remove('px-sheet-open');
+  }
+  function tryUseWeaponFromSheet(wk) {
+    const g = S.g;
+    if (!g || g.over) return;
+    if (S.mode === 'cheng' && S.extra && S.extra.slot) { closeSheets(); onWeapon(wk, true); return; }
+    if (g.turn !== HUMAN) { sheetError('weapon', '现在不是你的回合'); return; }
+    if (!E.equipTargets(g, HUMAN).length) { sheetError('weapon', '没有可以装备的己方单位（刚落子或已行动）'); return; }
+    closeSheets();
+    clearSel();
+    onWeapon(wk, true);
+    ensureBoardVisible();
+    flashMsg('选择场上角色装备');
+  }
+  function tryUseSkillFromSheet(key) {
+    const g = S.g, p = g && g.players[HUMAN];
+    if (!g || g.over || !p) return;
+    if (g.turn !== HUMAN) { sheetError('skill', '现在不是你的回合'); return; }
+    if (g.skillsLeft <= 0) { sheetError('skill', '本手技能已经用完'); return; }
+    if (g.skillsUsedThisTurn[key]) { sheetError('skill', '本手已经用过这张技能'); return; }
+    if ((p.skillUses[key] || 0) >= 2) { sheetError('skill', '这张技能整局已经用完'); return; }
+    if (key === 'chengzai' && !p.weapons.length) { sheetError('skill', '手上没有装备可以换'); return; }
+    if (!E.skillTargets(g, HUMAN).length) { sheetError('skill', '没有可以施法的己方单位'); return; }
+    closeSheets();
+    clearSel();
+    onSkill(key);
+    ensureBoardVisible();
+    flashMsg('选择场上角色施放');
+  }
+
   function fieldBadge(u) {
     const t = [];
     if (u.fieldDmg > 0) t.push('<i class="st buff">伤+1</i>');
@@ -264,6 +712,9 @@
     if (u.fieldVuln > 0) t.push('<i class="st vuln">增伤</i>');
     if (u.fieldBurnOnHit) t.push('<i class="st fire">火</i>');
     if (u.burn > 0) t.push(`<i class="st burn">烧${u.burn}</i>`);
+    if (u.poison > 0) t.push(`<i class="st poison">毒${u.poison}</i>`);
+    if (u.guard === 'firm') t.push('<i class="st guard">坚守</i>');
+    else if (u.guard === 'hasty') t.push('<i class="st guard">御</i>');
     if (u.justPlayed) t.push('<i class="st new">新</i>');
     else if (u.acted && !(u.extraActions > 0)) t.push('<i class="st done">已</i>');
     if (u.extraActions > 0) t.push(`<i class="st extra">+${u.extraActions}行</i>`);
@@ -297,18 +748,20 @@
       const isSeat = key === mySeatKey || key === foeSeatKey;
       let inner;
       if (u) {
-        inner = `<div class="unit ${u.owner === HUMAN ? 'mine' : 'foe'} ${sel ? 'sel' : ''}" data-slot="${key}">
+        const guardCls = u.guard ? `guarding ${u.guard}` : '';
+        inner = `<div class="unit ${u.owner === HUMAN ? 'mine' : 'foe'} ${guardCls} ${sel ? 'sel' : ''}" style="--ec:${ec.color}" data-slot="${key}">
           <div class="uport">${D.portraitHtml(u.card, 30, 34)}</div>
           <div class="uname">${u.card.name}</div>
           <div class="ustats"><span class="a">${u.atk}</span><span class="h">${u.hp}</span></div>
           ${u.shield > 0 ? `<div class="ushield">盾${u.shield}</div>` : ''}
-          ${u.weapon ? `<div class="uweapon">${u.weapon.name}</div>` : ''}
+          ${u.weapon ? `<div class="uweapon">${weaponIconHtml(u.weapon.key, 'uwicon')}${u.weapon.name}</div>` : ''}
           ${fieldBadge(u)}
         </div>`;
       } else {
         inner = `<div class="cempty"><b>${t.sym} ${t.name}</b><span>${t.dir} · ${ec.name}</span><em>空位 · ${ROLES.find(r => r.name === t.role).name}</em></div>`;
       }
-      html += `<div class="slot ${valid ? 'valid' : ''} ${target ? 'target' : ''} ${move ? 'move' : ''} ${eq ? 'equipable' : ''} ${sk ? 'skillable' : ''} ${dongA ? 'ally' : ''} ${isSeat ? 'seat' : ''} ${sel ? 'selected' : ''}" data-slot="${key}" style="--a:${i * 45}deg;--c:${ec.color}">
+      const sideCls = u ? (u.owner === HUMAN ? 'has-mine' : 'has-foe') : '';
+      html += `<div class="slot ${valid ? 'valid' : ''} ${target ? 'target' : ''} ${move ? 'move' : ''} ${eq ? 'equipable' : ''} ${sk ? 'skillable' : ''} ${dongA ? 'ally' : ''} ${isSeat ? 'seat' : ''} ${sel ? 'selected' : ''} ${sideCls}" data-slot="${key}" style="--a:${i * 45}deg;--c:${ec.color}">
         <div class="slothead"><b>${t.sym} ${t.name}</b><span>${t.dir} · ${ec.name}</span></div>
         ${inner}
       </div>`;
@@ -319,10 +772,15 @@
   function handTile(cid, p, opts) {
     const c = CARDS[cid], st = p.cardState[cid];
     const sel = S.sel && S.sel.type === 'card' && S.sel.id === cid;
-    return `<button class="htile ${st} ${sel ? 'sel' : ''} ${opts && opts.mini ? 'mini' : ''}" data-card="${cid}" ${st !== 'hand' && !(opts && opts.showState) ? 'disabled' : ''}>
-      <span class="hport">${D.portraitHtml(c, opts && opts.mini ? 22 : 30, opts && opts.mini ? 25 : 34)}</span>
-      <span class="hname">${c.name}</span>
-      <span class="hstats">${c.atk}/${c.hp}</span>
+    const ec = D.ELEMENTS[c.element] || D.ELEMENTS.metal;
+    const pixel = document.body.classList.contains('pixelbody');
+    const label = pixel ? c.role : c.name;
+    return `<button class="htile ${st} ${sel ? 'sel' : ''} ${opts && opts.mini ? 'mini' : ''}" data-card="${cid}" title="${c.name} · ${c.atk}/${c.hp}" style="--ec:${ec.color}" ${st !== 'hand' && !(opts && opts.showState) ? 'disabled' : ''}>
+      <span class="htop"><b>${c.sym} ${c.attr}</b><i>${c.role}</i></span>
+      <span class="hattr">${c.attr}</span>
+      <span class="hport">${D.portraitHtml(c, opts && opts.mini ? 22 : 70, opts && opts.mini ? 25 : 74)}</span>
+      <span class="hname">${label}</span>
+      <span class="hstats"><i class="a">${c.atk}</i><i class="h">${c.hp}</i></span>
       ${st === 'board' ? '<span class="hstate">场上</span>' : st === 'dead' ? '<span class="hstate dead">亡</span>' : ''}
     </button>`;
   }
@@ -340,6 +798,7 @@
     return p.cardState[S.sel.id] === 'hand' ? CARDS[S.sel.id] : null;
   }
   function bestPlacementNote(card) {
+    if (S.g && S.g.character === 'chier') return '愚钝：＊';
     const empties = E.RING.filter(k => !S.g.board[k]);
     if (!empties.length) return '场上没有空位。';
     let best = null;
@@ -353,6 +812,20 @@
   function renderPreview() {
     const el = $('previewPanel');
     if (!S.g) { el.innerHTML = '<div class="pvhint">点击人物牌、场上单位、武器或技能查看介绍</div>'; return; }
+    if (S.pending && S.sel && S.sel.type === 'unit') {
+      const fc = E.forecast(S.g, HUMAN, S.pending.from, S.pending.to);
+      const a = E.unitAt(S.g, S.pending.from), t = E.unitAt(S.g, S.pending.to);
+      if (fc && a && t) {
+        el.innerHTML = `<div class="fc">
+          <div class="fcnames">${a.card.name} → ${t.card.name}</div>
+          <div class="fcdmg">${fc.dmg}<small> 伤</small></div>
+          <div class="fcbreak">${a.atk} 攻${fc.fieldDmg ? ' · 场地' + (fc.fieldDmg > 0 ? '+1' : '-1') : ''}${fc.over ? ' · 克+1' : ''}${fc.mult > 1 ? ' · ×' + fc.mult : ''}${fc.absorbed ? ' · 盾挡' + fc.absorbed : ''}${fc.armor ? ' · 减伤' + fc.armor : ''}${fc.vuln ? ' · 增伤' + fc.vuln : ''}</div>
+          <div class="fchp">目标 ${t.hp} → ${fc.hpAfter} 血${fc.kill ? ' · <b class="kill">击杀</b>' : ''}${fc.burn ? ' · 灼烧' : ''}</div>
+          <div class="fcconfirm">再点一次「${t.card.name}」确认攻击</div>
+        </div>`;
+        return;
+      }
+    }
     const sc = selectedCard();
     if (sc) {
       const ec = ELEMENTS[sc.element], rc = ELEMENTS[sc.roleElement];
@@ -423,8 +896,24 @@
     if (S.flash) { el.textContent = S.flash; return; }
     if (g.over) { el.textContent = '对局结束'; return; }
     if (g.turn === FOE) { el.innerHTML = '<b>庄家行动中…</b>'; return; }
+    if (S.pending) { el.innerHTML = '再点一次目标确认攻击 · 点别处取消'; return; }
     if (S.mode === 'place') { el.innerHTML = '落子：点一个空席 <span class="sub">或再点一张牌取消</span>'; return; }
-    if (S.mode === 'unit') { el.innerHTML = '点红色敌人攻击 · 点蓝色邻位移动 <span class="sub">每张牌本回合一次</span>'; return; }
+    if (S.mode === 'unit') {
+      let bar = '';
+      const slot = S.sel && S.sel.slot;
+      if (slot) {
+        const u = E.unitAt(g, slot);
+        if (u && u.owner === HUMAN) {
+          const b = [];
+          if (E.defendValid(g, HUMAN, slot, 'hasty').ok) b.push(`<button class="dbtn" data-defend="hasty" data-slot="${slot}">仓促防御</button>`);
+          if (E.defendValid(g, HUMAN, slot, 'firm').ok) b.push(`<button class="dbtn" data-defend="firm" data-slot="${slot}">坚守防御</button>`);
+          if (E.defendValid(g, HUMAN, slot, 'cancel').ok) b.push(`<button class="dbtn warn" data-defend="cancel" data-slot="${slot}">解除坚守</button>`);
+          if (b.length) bar = `<span class="defendbar">${b.join('')}</span>`;
+        }
+      }
+      el.innerHTML = '点红色敌人攻击 · 点蓝色邻位移动 <span class="sub">每张牌本回合一次</span>' + bar;
+      return;
+    }
     if (S.mode === 'equip') { el.innerHTML = '装备：点一张能行动的己方单位'; return; }
     if (S.mode === 'skill') { el.innerHTML = `技能「${D.SKILL_BY_KEY[S.sel.key].name}」：点一个自己的单位`; return; }
     if (S.mode === 'zhi') { el.innerHTML = '止：点该单位范围内的一名敌人'; return; }
@@ -442,7 +931,7 @@
       <div class="termline">第 ${g.month} 月 · ${g.term.name}/${g.term.zhong}</div>`;
   }
 
-  const KIND = { month: '月', turn: '手', place: '出', attack: '攻', equip: '装', move: '移', skill: '技', death: '亡', end: '终', term: '场' };
+  const KIND = { month: '月', turn: '手', place: '出', attack: '攻', equip: '装', move: '移', skill: '技', death: '亡', end: '终', term: '场', defend: '御', round: '转', sign: '签', divine: '卦' };
   function renderHistory() {
     const g = S.g;
     const logs = g.log.slice(-70);
@@ -461,8 +950,26 @@
       FX.setTerm(t, S.g.month);
     }
   }
-  function clearSel() { S.sel = null; S.mode = null; S.extra = null; }
+  function showCombo(text, kill) {
+    const el = $('comboBanner');
+    if (!el) return;
+    el.textContent = text + (kill ? ' · 击杀' : '');
+    el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  }
+  function shakeArena() {
+    const el = document.querySelector('.arena');
+    if (!el) return;
+    el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
+    setTimeout(() => el.classList.remove('shake'), 320);
+  }
+  function clearSel() { S.sel = null; S.mode = null; S.extra = null; S.pending = null; }
   function refresh() { renderAll(); updateTerm(false); }
+  function ensureBoardVisible() {
+    const b = document.querySelector('.boardwrap');
+    if (!b) return;
+    const r = b.getBoundingClientRect();
+    if (r.top < 64 || r.bottom > innerHeight - 70) b.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
 
   function onCard(cid, mine) {
     if (!S.g || S.g.over) return;
@@ -473,10 +980,11 @@
     if (p.cardState[cid] !== 'hand') { flashMsg('这张牌已经不在手上'); return; }
     if (S.g.turn !== HUMAN) { S.sel = { type: 'card', id: cid }; S.mode = null; renderAll(); return; }
     if (S.sel && S.sel.type === 'card' && S.sel.id === cid) { clearSel(); renderAll(); return; }
-    S.preview = null;
+    S.preview = null; S.pending = null;
     S.sel = { type: 'card', id: cid };
     S.mode = 'place'; S.extra = null;
     renderAll();
+    ensureBoardVisible();
   }
 
   function onWeapon(wk, mine) {
@@ -489,10 +997,11 @@
       clearSel(); refresh(); checkOver(); return;
     }
     if (S.sel && S.sel.type === 'weapon' && S.sel.key === wk) { clearSel(); renderAll(); return; }
-    S.preview = null;
+    S.preview = null; S.pending = null;
     S.sel = { type: 'weapon', key: wk };
     S.mode = 'equip'; S.extra = null;
     renderAll();
+    ensureBoardVisible();
   }
 
   function onSkill(key) {
@@ -505,9 +1014,10 @@
       return;
     }
     if (S.sel && S.sel.type === 'skill' && S.sel.key === key) { clearSel(); renderAll(); return; }
-    S.preview = null;
+    S.preview = null; S.pending = null;
     S.sel = { type: 'skill', key }; S.mode = 'skill'; S.extra = null;
     renderAll();
+    ensureBoardVisible();
   }
 
   function onSlot(key) {
@@ -526,9 +1036,26 @@
     }
     if (S.mode === 'unit' && S.sel && S.sel.slot) {
       if (u && u.owner !== HUMAN && E.attackTargets(g, HUMAN, S.sel.slot).includes(key)) {
+        if (!S.pending || S.pending.from !== S.sel.slot || S.pending.to !== key) {
+          S.pending = { from: S.sel.slot, to: key };
+          renderAll();
+          return;
+        }
+        const fc = E.forecast(g, HUMAN, S.sel.slot, key);
+        const rect = document.querySelector(`.slot[data-slot="${key}"]`)?.getBoundingClientRect();
         const r = E.attack(g, HUMAN, S.sel.slot, key);
         if (!r.ok) { flashMsg(r.msg); return; }
-        FX.inkAt(document.querySelector(`.slot[data-slot="${key}"]`)?.getBoundingClientRect());
+        if (fc) {
+          FX.hitAt(rect, String(fc.dmg), fc.kill);
+          const parts = [];
+          if (fc.over) parts.push('克制 +1');
+          if (fc.fieldDmg) parts.push('场地 ' + (fc.fieldDmg > 0 ? '+1' : '-1'));
+          if (fc.mult > 1) parts.push('入 ×' + fc.mult);
+          if (fc.burn) parts.push('灼烧');
+          if (fc.kill) parts.push('击杀');
+          if (parts.length) showCombo(parts.join(' · '), fc.kill);
+          shakeArena();
+        }
         clearSel(); refresh(); checkOver(); return;
       }
       if (!u && E.moveTargets(g, HUMAN, S.sel.slot).includes(key)) {
@@ -554,7 +1081,7 @@
         }
         if (sk === 'chengzai') {
           if (!g.players[HUMAN].weapons.length) { flashMsg('手上没有装备'); return; }
-          S.extra = { slot: key }; S.mode = 'cheng'; renderAll(); return;
+          S.extra = { slot: key }; S.mode = 'cheng'; renderAll(); openSheet('weapon'); return;
         }
         if (sk === 'dong' && matches === 2) {
           const allies = E.adjacent(key).filter(k => { const a = E.unitAt(g, k); return a && a.owner === HUMAN; });
@@ -582,7 +1109,7 @@
       }
     }
     if (u) {
-      S.preview = null;
+      S.preview = null; S.pending = null;
       S.sel = { type: 'unit', slot: key };
       S.mode = u.owner === HUMAN && E.canUnitAct(g, HUMAN, u) ? 'unit' : null;
       S.extra = null;
@@ -597,6 +1124,7 @@
   function endTurn() {
     if (!S.g || S.g.over || S.g.turn !== HUMAN) return;
     E.endTurn(S.g);
+    S.charChoice = null;
     clearSel(); refresh(); checkOver();
     if (S.g && !S.g.over && S.g.turn === FOE) startAI();
   }
@@ -607,7 +1135,7 @@
     S.aiTimer = setTimeout(() => {
       if (!S.g || S.g.over || S.g.turn !== FOE) return;
       const r = AI.step(S.g, FOE);
-      S.sel = null; S.mode = null; S.extra = null;
+      S.sel = null; S.mode = null; S.extra = null; S.pending = null;
       refresh();
       if (S.g.over) { setTimeout(showResult, 500); return; }
       if (!r.done) startAI();
@@ -619,6 +1147,13 @@
   function init() {
     FX.start();
     $('btnEnd').addEventListener('click', endTurn);
+    $('prompt').addEventListener('click', e => {
+      const b = e.target.closest('[data-defend]');
+      if (!b || !S.g || S.g.over) return;
+      const r = E.defend(S.g, HUMAN, b.dataset.slot, b.dataset.defend);
+      if (!r.ok) { flashMsg(r.msg); return; }
+      clearSel(); refresh(); checkOver();
+    });
     $('btnRules').addEventListener('click', showRules);
     $('board').addEventListener('click', e => {
       const s = e.target.closest('.slot');
@@ -636,12 +1171,78 @@
     });
     $('weapons').addEventListener('click', e => {
       const t = e.target.closest('.wcard');
-      if (t) onWeapon(t.dataset.weapon, true);
+      if (!t) return;
+      if (t.closest('.px-sheet')) showSheetDetail('weapon', t.dataset.weapon);
+      else onWeapon(t.dataset.weapon, true);
+    });
+    $('weapons').addEventListener('dblclick', e => {
+      const t = e.target.closest('.wcard');
+      if (t && t.closest('.px-sheet')) tryUseWeaponFromSheet(t.dataset.weapon);
     });
     $('skills').addEventListener('click', e => {
       const t = e.target.closest('.skill');
-      if (t) onSkill(t.dataset.skill);
+      if (!t) return;
+      if (t.closest('.px-sheet')) showSheetDetail('skill', t.dataset.skill);
+      else onSkill(t.dataset.skill);
     });
+    $('skills').addEventListener('dblclick', e => {
+      const t = e.target.closest('.skill');
+      if (t && t.closest('.px-sheet')) tryUseSkillFromSheet(t.dataset.skill);
+    });
+    const wb = $('btnWeaponSheet'), sb = $('btnSkillSheet'), qe = $('btnQuickEnd');
+    if (wb) wb.addEventListener('click', () => openSheet('weapon'));
+    if (sb) sb.addEventListener('click', () => openSheet('skill'));
+    if (qe) qe.addEventListener('click', () => {
+      if (!S.g || S.g.over) return;
+      if (S.sel || S.pending) { clearSel(); refresh(); return; }
+      if (S.g.turn === HUMAN) endTurn();
+    });
+    for (const [id, kind] of [['weaponSheet', 'weapon'], ['skillSheet', 'skill']]) {
+      const sheet = $(id);
+      if (!sheet) continue;
+      sheet.addEventListener('click', e => {
+        if (e.target === sheet || e.target.closest('[data-sheet-close]')) closeSheets();
+      });
+    }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheets(); });
+    const csk = $('charSkills');
+    if (csk) csk.addEventListener('click', e => {
+      if (!S.g || S.g.over) return;
+      const cancel = e.target.closest('[data-char-cancel]');
+      if (cancel) { S.charChoice = null; renderCharacter(); return; }
+      const pick = e.target.closest('[data-summon]');
+      if (pick && S.charChoice) {
+        const r = E.summon(S.g, HUMAN, S.charChoice.type, pick.dataset.summon);
+        if (!r.ok) { flashMsg(r.msg); return; }
+        S.charChoice = null;
+        if (window.PixelSFX) window.PixelSFX.play('skill');
+        clearSel(); refresh();
+        showCombo(S.g.summon ? S.g.summon.name + ' 入场' : '化身入场', false);
+        return;
+      }
+      const b = e.target.closest('[data-cskill]');
+      if (!b) return;
+      const key = b.dataset.cskill;
+      if (key === 'avatar' || key === 'clone') {
+        S.charChoice = { type: key };
+        renderCharacter();
+        return;
+      }
+      if (key === 'seize') { flashMsg('夺魄在胜利结算时触发'); return; }
+      const r = key === 'sign' ? E.sign(S.g, HUMAN) : E.divine(S.g, HUMAN);
+      if (!r.ok) { flashMsg(r.msg); return; }
+      let combo = key === 'sign' ? `求签 · ${r.tier}` : `卜卦 · ${r.type}`;
+      if (key === 'divine' && window.Meta) {
+        const m = window.Meta.recordDivine(r.type);
+        if (m.unlocked) combo = '痴儿解锁 · ' + combo;
+      }
+      if (window.PixelSFX) window.PixelSFX.play('skill');
+      clearSel(); refresh(); checkOver();
+      showCombo(combo, r.kills > 0);
+      if (r.kills || (key === 'sign' && r.tier === '下下')) shakeArena();
+    });
+    document.addEventListener('bagua:skins', () => { if (S.g) { renderWeapons(); renderBoard(); } });
+    if (new URLSearchParams(location.search).has('debug')) window.__bagua = { S, startGame, showResult, showPrep, Engine: E };
     showStart();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

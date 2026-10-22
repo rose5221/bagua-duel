@@ -121,20 +121,59 @@
     return diff === 'hard' ? opts[0] : (Math.random() < .75 ? opts[0] : null);
   }
 
+  function defendOptions(g, pid) {
+    const out = [];
+    for (const slot of E.ownUnits(g, pid)) {
+      const u = E.unitAt(g, slot);
+      if (!E.canUnitAct(g, pid, u)) continue;
+      const hpRatio = u.hp / u.maxHp;
+      const reachable = E.RING.some(k => {
+        const t = E.unitAt(g, k);
+        return t && t.owner !== pid && E.ringDist(slot, k) <= u.range;
+      });
+      const nearby = E.RING.some(k => {
+        const t = E.unitAt(g, k);
+        return t && t.owner !== pid && E.ringDist(slot, k) <= 2;
+      });
+      // 已在坚守：随时可解除；射程内有敌人时优先解除好出手
+      if (u.guard === 'firm') {
+        if (E.defendValid(g, pid, slot, 'cancel').ok) out.push({ slot, mode: 'cancel', score: reachable ? 9 : 5 });
+        continue;
+      }
+      // 仓促防御：附近有敌人才值得，越脆越值得
+      if (nearby && E.defendValid(g, pid, slot, 'hasty').ok) {
+        out.push({ slot, mode: 'hasty', score: (reachable ? 1 : 3) + (1 - hpRatio) * 8 });
+      }
+      // 坚守防御：够不着人又血少时临时龟住
+      if (!reachable && u.maxHp >= 30 && hpRatio <= .5 && E.defendValid(g, pid, slot, 'firm').ok) {
+        out.push({ slot, mode: 'firm', score: 4 + (1 - hpRatio) * 6 });
+      }
+    }
+    return out;
+  }
+
   function chooseUnitAction(g, pid, diff) {
-    const atk = attackOptions(g, pid), eq = equipOptions(g, pid), mv = moveOptions(g, pid);
+    const atk = attackOptions(g, pid), eq = equipOptions(g, pid), mv = moveOptions(g, pid), df = defendOptions(g, pid);
     if (diff === 'easy') {
       const all = [];
       for (const a of atk) all.push({ type: 'attack', ...a });
       for (const e of eq) all.push({ type: 'equip', ...e });
       for (const m of mv) all.push({ type: 'move', ...m });
+      if (Math.random() < .5) for (const d of df) all.push({ type: 'defend', ...d });
       return all.length ? pick(all) : null;
     }
     const bestAtk = atk.sort((a, b) => b.score - a.score)[0];
     if (bestAtk) return { type: 'attack', ...bestAtk };
+    const cancel = df.find(d => d.mode === 'cancel');
+    const bestMv = mv.sort((a, b) => b.score - a.score)[0];
+    if (bestMv && bestMv.score > 4) return { type: 'move', ...bestMv };
+    // 坚守会把牌焊死，必须有机会就松开，否则双方互相龟住、对局永远不结束
+    if (cancel) return { type: 'defend', ...cancel };
+    const bestDf = df.filter(d => d.mode !== 'cancel').sort((a, b) => b.score - a.score)[0];
+    if (bestDf && bestDf.score >= 6) return { type: 'defend', ...bestDf };
     const bestEq = eq.sort((a, b) => b.score - a.score)[0];
     if (bestEq) return { type: 'equip', ...bestEq };
-    const bestMv = mv.sort((a, b) => b.score - a.score)[0];
+    if (bestDf) return { type: 'defend', ...bestDf };
     if (bestMv) return { type: 'move', ...bestMv };
     return null;
   }
@@ -164,6 +203,7 @@
       let r;
       if (act.type === 'attack') r = E.attack(g, pid, act.from, act.to);
       else if (act.type === 'equip') r = E.equip(g, pid, act.wk, act.slot);
+      else if (act.type === 'defend') r = E.defend(g, pid, act.slot, act.mode);
       else r = E.move(g, pid, act.from, act.to);
       if (r && r.ok) return { done: false, acted: act.type };
     }

@@ -1,3 +1,8 @@
 *.bak.*
 wuxing-flat-backup/
 .DS_Store
+
+# 原始卡图与本地版权音乐不部署
+assets/cards_src/
+assets/cards_raw/
+assets/audio/tiandi.mp3

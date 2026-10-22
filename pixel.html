@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+  <title>八卦对决 · 像素</title>
+  <link rel="stylesheet" href="styles.css?v=20261022n">
+  <link rel="stylesheet" href="mobile.css?v=20261022n">
+  <link rel="stylesheet" href="pixel.css?v=20261022n">
+</head>
+<body class="pixelbody">
+  <div id="app" class="mobile pixel">
+    <header class="topbar">
+      <div class="brand">八卦对决 <span>PIXEL BAGUA</span></div>
+      <div class="seatbar" id="seatbar"></div>
+      <div class="status" id="status">未入座</div>
+      <div class="topactions">
+        <button id="btnMusic">音乐</button>
+        <button id="btnSfx">音效</button>
+        <button id="btnAccount">账号</button>
+        <button id="btnRules">规则</button>
+        <button id="btnEnd" disabled>结束</button>
+      </div>
+    </header>
+
+    <main class="stage">
+      <section class="arena">
+        <img class="sc-mountain" src="assets/pixel/scene/mountain.png" alt="">
+        <div class="scenery" aria-hidden="true">
+          <img class="sc-dao" src="assets/pixel/scene/dao.png" alt="">
+          <img class="sc-pine" src="assets/pixel/scene/pine.png" alt="">
+          <img class="sc-crane" src="assets/pixel/scene/crane.png" alt="">
+          <img class="sc-lantern l" src="assets/pixel/scene/lantern.png" alt="">
+          <img class="sc-lantern r" src="assets/pixel/scene/lantern.png" alt="">
+        </div>
+        <div class="cloudfield c1" aria-hidden="true"></div>
+        <div class="cloudfield c2" aria-hidden="true"></div>
+        <canvas id="fx" aria-hidden="true"></canvas>
+        <canvas id="pixelWeather" aria-hidden="true"></canvas>
+        <canvas id="pixelFx" aria-hidden="true"></canvas>
+        <div class="opppublic" id="oppPublic"></div>
+        <div class="boardwrap">
+          <div class="dili">地利</div>
+          <div class="board" id="board"></div>
+          <div class="ledring" aria-hidden="true">
+            <i style="--i:0;--led:#c2a24c"></i><i style="--i:1;--led:#6f9ca3"></i>
+            <i style="--i:2;--led:#b4472f"></i><i style="--i:3;--led:#86a574"></i>
+            <i style="--i:4;--led:#c2a24c"></i><i style="--i:5;--led:#6f9ca3"></i>
+            <i style="--i:6;--led:#b4472f"></i><i style="--i:7;--led:#86a574"></i>
+          </div>
+        </div>
+        <div class="figure me" id="myFigure"></div>
+        <div class="gearhint"><b>☯</b> 八卦定宫 · 场地每轮刷新 · 牌位不再轮转</div>
+        <div class="prompt" id="prompt"></div>
+      </section>
+
+      <section class="mbody">
+        <div class="previewPanel" id="previewPanel"></div>
+        <div class="mpanel charPanel"><div class="panelhead">角色 · 道童</div><div class="charskills" id="charSkills"></div></div>
+        <div class="handwrap">
+          <div class="handhead" id="handHead"></div>
+          <div class="hand" id="hand"></div>
+        </div>
+        <div class="myinfo" id="myInfo"></div>
+        <div class="season" id="season"></div>
+        <button id="btnLog" class="logjump">查看牌桌记录</button>
+        <div class="mpanel historyPanel"><div class="history" id="history"></div></div>
+      </section>
+    </main>
+
+    <div class="screens" id="screens"></div>
+
+    <div class="quickbar" id="quickbar" aria-label="快捷操作">
+      <button class="qbtn qleft" id="btnWeaponSheet" title="武器：单击查看，双击装备">
+        <b>兵</b><span>武器</span><i id="qWeaponCount">4</i>
+      </button>
+      <button class="qbtn qend" id="btnQuickEnd" title="结束回合 / 取消当前选择">
+        <b>终</b><span>结束</span>
+      </button>
+      <button class="qbtn qright" id="btnSkillSheet" title="技能：单击查看，双击施放">
+        <b>术</b><span>技能</span><i id="qSkillCount">2</i>
+      </button>
+    </div>
+
+    <div class="px-sheet" id="weaponSheet" aria-hidden="true">
+      <div class="px-sheet-panel">
+        <div class="px-sheet-head">
+          <div><b>武器</b><span>单击查看 · 双击装备 · 返回不消耗行动</span></div>
+          <button data-sheet-close>返回</button>
+        </div>
+        <div class="weapons" id="weapons"></div>
+        <div class="sheetdetail" id="weaponDetail"><span class="sdhint">单击查看武器，双击后选择场上角色装备。</span></div>
+        <div class="px-sheet-foot"><button data-sheet-close>返回棋盘</button></div>
+      </div>
+    </div>
+
+    <div class="px-sheet" id="skillSheet" aria-hidden="true">
+      <div class="px-sheet-panel">
+        <div class="px-sheet-head">
+          <div><b>技能</b><span>每回合最多 2 张 · 单击查看 · 双击施放</span></div>
+          <button data-sheet-close>返回</button>
+        </div>
+        <div class="skills" id="skills"></div>
+        <div class="sheetdetail" id="skillDetail"><span class="sdhint">单击查看技能，双击后选择场上角色施放。</span></div>
+        <div class="px-sheet-foot"><button data-sheet-close>返回棋盘</button></div>
+      </div>
+    </div>
+
+    <div class="combobanner" id="comboBanner"></div>
+    <div class="termflash" id="termFlash"></div>
+  </div>
+
+  <audio id="bgm" loop preload="auto">
+    <source src="assets/audio/tiandi.mp3" type="audio/mpeg">
+    <source src="assets/audio/deploy-ambient.m4a" type="audio/mp4">
+  </audio>
+
+  <script src="src/data.js?v=20261022n"></script>
+  <script src="src/meta.js?v=20261022n"></script>
+  <script src="src/weapon-skins.js"></script>
+  <script>
+    // 像素版使用单独的像素卡图，不改动原版资源
+    window.DATA.portraitHtml = function (card, w, h, cls) {
+      return `<img class="portrait ${cls || ''}" src="assets/art/cards-pixel/${card.id}.webp"
+        width="${w}" height="${h}" alt="${card.name}" loading="lazy" decoding="async"
+        data-cid="${card.id}" onerror="this.onerror=null;window.DATA.portraitFallback(this)">`;
+    };
+  </script>
+  <script src="src/engine.js?v=20261022n"></script>
+  <script src="src/ai.js"></script>
+  <script src="src/ui.js?v=20261022n"></script>
+  <script src="src/pixel-sfx.js"></script>
+  <script src="src/elixirs.js"></script>
+  <script src="src/pixel-account.js"></script>
+  <script src="src/pixel-weather.js"></script>
+  <script src="src/pixel-fx.js"></script>
+  <script>
+    document.getElementById('btnLog').addEventListener('click', () => {
+      const panel = document.querySelector('.historyPanel');
+      if (panel) {
+        panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        panel.classList.remove('flash'); void panel.offsetWidth; panel.classList.add('flash');
+      }
+    });
+
+    // ---- 古风背景音乐：本地优先《天地缓缓》，部署版回落到原创环境音 ----
+    (() => {
+      const bgm = document.getElementById('bgm');
+      const btn = document.getElementById('btnMusic');
+      let started = false, playing = false;
+      if (!bgm) return;
+      bgm.volume = 0.42;
+      const setLabel = () => { if (btn) btn.textContent = playing ? '音乐开' : (started ? '音乐关' : '音乐'); };
+      const play = () => {
+        bgm.play().then(() => { playing = true; setLabel(); }).catch(() => { playing = false; setLabel(); });
+      };
+      const start = () => {
+        if (started) { if (bgm.paused) play(); return; }
+        started = true;
+        play();
+      };
+      if (btn) btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!started) { start(); return; }
+        if (playing) { bgm.pause(); playing = false; setLabel(); }
+        else play();
+      });
+      document.addEventListener('pointerdown', (e) => {
+        if (e.target && e.target.closest && e.target.closest('#btnMusic')) return;
+        if (!started) start();
+      }, { once: true });
+    })();
+  </script>
+</body>
+</html>

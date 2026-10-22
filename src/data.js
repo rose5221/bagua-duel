@@ -129,7 +129,11 @@
     S: { label: '南', facing: '北', zhi: '午', toward: '子', text: '坐南朝北（位午向子）' },
   };
 
-  function portraitHtml(card, w, h, cls) {
+  // 立绘：assets/art/cards/<属性>-<角色>.webp（由即梦导出图按 id 归位）
+  const ART_ROOT = 'assets/art/cards/';
+
+  // 图缺失时的兜底：程序化剪影
+  function portraitSvgHtml(card, w, h, cls) {
     const ec = ELEMENTS[card.roleElement] || ELEMENTS.metal;
     const ac = ELEMENTS[card.element] || ELEMENTS.metal;
     const hat = { fu: 0, shaonv: 1, zhongnv: 2, changnv: 3, shaonan: 4, zhongnan: 5, changnan: 6, mu: 7 }[card.roleKey] || 0;
@@ -151,9 +155,95 @@
     </svg>`;
   }
 
+  function portraitHtml(card, w, h, cls) {
+    return `<img class="portrait ${cls || ''}" src="${ART_ROOT}${card.id}.webp"
+      width="${w}" height="${h}" alt="${card.name}" loading="lazy" decoding="async"
+      data-cid="${card.id}" onerror="this.onerror=null;window.DATA.portraitFallback(this)">`;
+  }
+
+  function portraitFallback(img) {
+    const card = CARDS[img.dataset.cid];
+    if (!card) return;
+    const w = +img.getAttribute('width') || 30;
+    const h = +img.getAttribute('height') || 34;
+    img.outerHTML = portraitSvgHtml(card, w, h, (img.className || '').replace('portrait', '').trim());
+  }
+
+  // 角色：道童 / 清风 / 旁门开局可选；痴儿需道童连续三次卜出老阴
+  const CHARACTERS = [
+    {
+      key: 'daotong', name: '道童', tag: '默认', open: true,
+      desc: '求签 · 卜卦', passive: '无被动',
+      skills: ['sign', 'divine'],
+    },
+    {
+      key: 'qingfeng', name: '清风道长', tag: '可选', open: true,
+      desc: '化身 · 分身', passive: '三魂七魄化身',
+      skills: ['avatar', 'clone'],
+    },
+    {
+      key: 'pangmen', name: '旁门道人', tag: '可选', open: true,
+      desc: '夺魄 · 炼魂', passive: '炼魂：己方全体每回合 +1 攻 / -2 血',
+      skills: ['seize'],
+    },
+    {
+      key: 'chier', name: '痴儿', tag: '未解锁', open: false,
+      desc: '痴傻 · 蠢笨 · 愚痴 · 愚钝 · 痴戾', passive: '五重痴相',
+      skills: [],
+    },
+  ];
+
+  const CHAR_SKILLS = {
+    sign: {
+      name: '求签', limit: '每回合一次',
+      desc: '系统按双方场面与气场判签：上上 / 上吉 / 中吉 / 中平 / 下下。对手只见你求签，不见签文。',
+    },
+    divine: {
+      name: '卜卦', limit: '每回合一次',
+      desc: '掷三枚铜钱。三背为老阳：敌方全体 -2 攻 / -2 血；三字为老阴：己方全体 -1 攻 / -1 血；少阳、少阴无事。',
+    },
+    avatar: {
+      name: '化身', limit: '每局一次',
+      desc: '选天地人三魂之一入场，不占 3 张上限，木属性 20 攻/40 血；与分身不可同时在场。化身阵亡会失去该魂。',
+    },
+    clone: {
+      name: '分身', limit: '每局一次',
+      desc: '选七魄之一入场，受 3 张上限，金属性 20 攻/30 血；与化身不可同时在场。分身阵亡后该魄转伪。',
+    },
+    seize: {
+      name: '夺魄', limit: '胜利结算',
+      desc: '胜利结算时，若己方场上仍有 3 张牌，可夺取敌方一魄炼为伪魄；对局中不直接使用。',
+    },
+  };
+
+  const HUNS = [
+    { key: 'tian', name: '天魂', full: '天魂·胎光', effect: '化身：入场攻击 +50%' },
+    { key: 'di', name: '地魂', full: '地魂·爽灵', effect: '化身：攻击 30% 再攻击一次' },
+    { key: 'ren', name: '人魂', full: '人魂·幽精', effect: '化身：入场生命 +30%' },
+  ];
+
+  const POS = [
+    { key: 'shigou', name: '尸狗', effect: '分身：场上己方 +1 护盾' },
+    { key: 'fushi', name: '伏矢', effect: '分身：场上己方每回合 +1 生命' },
+    { key: 'queyin', name: '雀阴', effect: '分身：开局固定坐北朝南' },
+    { key: 'tunzei', name: '吞贼', effect: '分身：首个入场人物免疫一次伤害' },
+    { key: 'feidu', name: '非毒', effect: '分身：攻击命中附加 1 层剧毒' },
+    { key: 'chuhui', name: '除秽', effect: '分身：攻击伤害 +1' },
+    { key: 'choufei', name: '臭肺', effect: '分身：人物入场 +2 攻 +2 生命' },
+  ];
+
+  const SIGNS = [
+    { key: '上上', tone: 'gold', effect: '己方全体 +2 攻 / +2 血' },
+    { key: '上吉', tone: 'gold', effect: '己方全体 +1 攻 / 回复 3 血' },
+    { key: '中吉', tone: 'jade', effect: '己方全体 回复 4 血' },
+    { key: '中平', tone: 'plain', effect: '己方全体 回复 2 血' },
+    { key: '下下', tone: 'ash', effect: '己方全体 -1 攻（最低 0）' },
+  ];
+
   window.DATA = {
     ELEMENTS, RING, TRIGRAMS, ATTRS, ROLES, ROLE_BY_KEY, ATTR_BY_KEY, CARDS,
     WEAPONS, WEAPON_BY_KEY, SKILLS, SKILL_BY_KEY, FIELD_RULES, DIFFICULTY, TERMS, SEATS,
-    portraitHtml,
+    CHARACTERS, CHAR_SKILLS, SIGNS, HUNS, POS,
+    ART_ROOT, portraitHtml, portraitSvgHtml, portraitFallback,
   };
 })();

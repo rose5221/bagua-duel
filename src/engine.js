@@ -27,35 +27,63 @@
     if (g.log.length > 400) g.log.shift();
   }
 
-  function makePlayer(id, name, attrs) {
+  function makePlayer(id, name, poolAttrs, activeAttrs, activeCards) {
     const hand = [], cardState = {};
-    for (const ak of attrs) {
-      for (const r of shuffle(ROLES).slice(0, 4)) {
+    // 局外牌库：4 个属性 × 8 类人物 = 32 张；未出战的 24 张留作献祭
+    for (const ak of poolAttrs) {
+      for (const r of ROLES) {
         const cid = ak + '-' + r.key;
-        hand.push(cid); cardState[cid] = 'hand';
+        cardState[cid] = 'reserve';
       }
     }
-    return { id, name, attrs, hand, cardState, weapons: [], skillUses: {}, dead: [] };
+    // 本局出战：优先使用准备界面选好的 8 张
+    const picked = Array.isArray(activeCards) ? activeCards.filter((cid, i, a) => a.indexOf(cid) === i && cardState[cid]) : [];
+    if (picked.length === 8) {
+      for (const cid of picked) { hand.push(cid); cardState[cid] = 'hand'; }
+    } else {
+      for (const ak of activeAttrs) {
+        for (const r of shuffle(ROLES).slice(0, 4)) {
+          const cid = ak + '-' + r.key;
+          hand.push(cid); cardState[cid] = 'hand';
+        }
+      }
+    }
+    return { id, name, attrs: poolAttrs, activeAttrs, hand, cardState, weapons: [], skillUses: {}, dead: [] };
   }
 
   function newGame(opts) {
     opts = opts || {};
-    const humanSeat = opts.humanSeat || (Math.random() < .5 ? 'N' : 'S');
+    const mods = opts.mods || {};
+    const humanSeat = opts.humanSeat || mods.forcedSeat || (Math.random() < .5 ? 'N' : 'S');
     const difficulty = opts.difficulty || 'normal';
     const first = firstPlayer(humanSeat);
     const attrs = shuffle(ATTRS.map(a => a.key));
-    const p0 = makePlayer(0, '你', attrs.slice(0, 2));
-    const p1 = makePlayer(1, '庄家', attrs.slice(2, 4));
+    const pickedAttrs = Array.isArray(opts.p0Attrs)
+      ? opts.p0Attrs.filter((a, i, arr) => ATTRS.some(x => x.key === a) && arr.indexOf(a) === i).slice(0, 4)
+      : [];
+    const pool0 = pickedAttrs.length === 4 ? pickedAttrs : attrs.slice(0, 4);
+    const pool1 = attrs.filter(a => !pool0.includes(a)).concat(attrs.filter(a => pool0.includes(a))).slice(0, 4);
+    const cards0 = Array.isArray(opts.p0Cards) ? opts.p0Cards.filter(cid => typeof cid === 'string' && CARDS[cid]) : [];
+    const active0 = cards0.length === 8 ? [...new Set(cards0.map(cid => CARDS[cid].attrKey))] : shuffle(pool0).slice(0, 2);
+    const active1 = shuffle(pool1).slice(0, 2);
+    const p0 = makePlayer(0, '你', pool0, active0, cards0);
+    const p1 = makePlayer(1, '庄家', pool1, active1);
     const weapons = shuffle(WEAPONS.map(w => w.key));
     p0.weapons = weapons.slice(0, 4);
     p1.weapons = weapons.slice(4, 8);
     const g = {
       humanSeat, difficulty, first, turn: first, turnNo: 0, round: 0, month: 1,
+      character: D.CHARACTERS.some(c => c.key === opts.character) ? opts.character : 'daotong',
+      charUsed: { sign: false, divine: false },
+      charUsedGame: { avatar: false, clone: false, seize: false },
+      charResult: null, summon: null, lostHuns: Array.isArray(opts.lostHuns) ? opts.lostHuns.slice() : [], pseudoPos: [], chierAttacks: 0,
+      mods, firstImmuneUsed: false,
       term: TERMS[0], over: false, winner: null, board: {}, players: [p0, p1],
       placedThisTurn: false, skillsLeft: 2, skillsUsedThisTurn: {}, log: [],
     };
     for (const k of RING) g.board[k] = null;
     log(g, -1, 'month', `${D.SEATS[humanSeat].text} · ${first === HUMAN ? '你先手' : '庄家先手'} · 难度 ${D.DIFFICULTY.find(d => d.key === difficulty).name}`);
+    log(g, -1, 'month', `双方牌库各 32 张（4 属性 × 8 人物）；本局出战 2 属性 × 4 张 = 8 张`);
     startTurn(g);
     return g;
   }
@@ -67,6 +95,8 @@
     g.placedThisTurn = false;
     g.skillsLeft = 2;
     g.skillsUsedThisTurn = {};
+    g.charUsed = { sign: false, divine: false };
+    g.chierAttacks = 0;
     if (g.turn === g.first) startRound(g);
     if (g.over) return;
     for (const k of RING) {
@@ -77,7 +107,50 @@
       u.extraActions = 0;
       u.shield = u.shieldMax + u.tempShield;
     }
+    if (p.id === HUMAN && g.mods) {
+      const m = g.mods;
+      for (const k of RING) {
+        const u = unitAt(g, k);
+        if (!u || u.owner !== p.id) continue;
+        if (m.shieldBonus) {
+          u.shieldMax = Math.max(0, u.shieldMax + m.shieldBonus);
+          u.shield = Math.max(0, u.shield + m.shieldBonus);
+        }
+        if (m.regen) {
+          u.hp = Math.min(u.maxHp, u.hp + m.regen);
+          log(g, p.id, 'term', `伏矢：${u.card.name} ${m.regen > 0 ? '+' : ''}${m.regen} 血（${Math.max(0, u.hp)}/${u.maxHp}）`);
+          if (u.hp <= 0) killUnit(g, u, '失魄');
+        }
+      }
+    }
     log(g, p.id, 'turn', `第 ${g.turnNo} 手 · ${p.name} · 场上 ${ownUnits(g, p.id).length}/${BOARD_MAX} · 手牌 ${p.hand.length} · 余 ${remaining(p)}/8`);
+
+    // 剧毒结算：每层扣 1 点，先扣护盾再扣血
+    for (const k of RING) {
+      const u = unitAt(g, k);
+      if (!u || u.owner !== p.id || u.poison <= 0) continue;
+      const n = u.poison;
+      const absorbed = Math.min(u.shield, n);
+      u.shield -= absorbed;
+      u.hp -= (n - absorbed);
+      log(g, p.id, 'term', `剧毒 ${n} 层：${CARDS[u.cardId].name}${absorbed ? ` 盾挡 ${absorbed}` : ''} -${n - absorbed} 血（${Math.max(0, u.hp)}/${u.maxHp}）`);
+      // 本轮窗口内没有叠加新层，就衰减 1 层
+      if (!u.poisonAdded) u.poison = Math.max(0, u.poison - 1);
+      u.poisonAdded = false;
+      if (u.hp <= 0) { killUnit(g, u, '剧毒'); continue; }
+    }
+    // 旁门道人【炼魂】：己方场上每回合开始 +1 攻 / -2 血
+    if (!g.over && g.character === 'pangmen' && p.id === HUMAN) {
+      for (const k of RING) {
+        const u = unitAt(g, k);
+        if (!u || u.owner !== p.id) continue;
+        u.atk += 1;
+        u.hp -= 2;
+        log(g, p.id, 'term', `炼魂：${u.card.name} +1 攻 / -2 血（${Math.max(0, u.hp)}/${u.maxHp}）`);
+        if (u.hp <= 0) killUnit(g, u, '炼魂');
+      }
+    }
+    checkEnd(g);
   }
 
   function startRound(g) {
@@ -99,6 +172,14 @@
       }
       applyField(g, u);
       u.shield = u.shieldMax + u.tempShield;
+    }
+    if (g.mods && g.mods.poisonEvery2 && g.round % 2 === 0) {
+      for (const k of RING) {
+        const u = unitAt(g, k);
+        if (!u || u.owner !== HUMAN) continue;
+        applyPoison(u, 1);
+        log(g, HUMAN, 'term', `非毒失魄：${u.card.name} 获得 1 层剧毒`);
+      }
     }
     checkEnd(g);
   }
@@ -143,12 +224,19 @@
     if (p.cardState[cardId] !== 'hand') return { ok: false, msg: '这张人物牌不在手上' };
     const card = CARDS[cardId], slot = TRIGRAMS[slotKey];
     const b = placement(card, slot);
+    const mods = (pid === HUMAN && g.mods) ? g.mods : {};
+    const atk = Math.max(0, Math.round(b.atk * (1 + (mods.entranceAtkPct || 0))) + (mods.entranceAtk || 0));
+    const hp = Math.max(1, Math.round(b.hp * (1 + (mods.entranceHpPct || 0))) + (mods.entranceHp || 0));
+    const firstImmune = !!mods.firstImmune && !g.firstImmuneUsed;
+    if (firstImmune) g.firstImmuneUsed = true;
     const u = {
-      cardId, owner: pid, slot: slotKey, card, atk: b.atk, maxHp: b.hp, hp: b.hp,
+      cardId, owner: pid, slot: slotKey, card, atk, maxHp: hp, hp,
       weapon: null, weaponHp: 0, shield: 0, shieldMax: 0, tempShield: 0, range: 1,
       acted: false, justPlayed: true, extraActions: 0, mult: 1, multUses: 0,
       burn: 0, attackBan: 0, skillBan: 0, banTurns: 0,
+      guard: null, hastyTurn: -99, poison: 0, poisonAdded: false,
       fieldDmg: 0, fieldArmor: 0, fieldVuln: 0, fieldBurnOnHit: false, dead: false,
+      immuneOnce: firstImmune,
     };
     g.board[slotKey] = { unit: u };
     p.cardState[cardId] = 'board';
@@ -192,6 +280,7 @@
     if (!u || u.owner !== pid) return { ok: false, msg: '不是你的单位' };
     if (u.justPlayed) return { ok: false, msg: '刚落下的牌本回合不能行动' };
     if (!canUnitAct(g, pid, u)) return { ok: false, msg: '这张牌本回合已行动' };
+    if (u.guard === 'firm') return { ok: false, msg: '坚守中不能装备' };
     if (u.weapon) return { ok: false, msg: '已有装备，只有「承载」能换' };
     const wi = p.weapons.indexOf(weaponKey);
     if (wi < 0) return { ok: false, msg: '没有这件装备' };
@@ -211,6 +300,7 @@
     if (!u || u.owner !== pid) return { ok: false, msg: '不是你的单位' };
     if (u.justPlayed) return { ok: false, msg: '刚落下的牌本回合不能行动' };
     if (!canUnitAct(g, pid, u)) return { ok: false, msg: '这张牌本回合已行动' };
+    if (u.guard === 'firm') return { ok: false, msg: '坚守中不能移动，需先解除' };
     if (!adjacent(fromKey).includes(toKey)) return { ok: false, msg: '只能移动到邻位' };
     if (g.board[toKey]) return { ok: false, msg: '目标卦位已有牌' };
     spendUnitAction(u);
@@ -221,6 +311,69 @@
     return { ok: true };
   }
 
+  /* ---------- 防御 / 剧毒 ---------- */
+  function applyPoison(u, n) {
+    u.poison += n;
+    u.poisonAdded = true;
+    u.poison = Math.max(0, u.poison);
+  }
+
+  function defendValid(g, pid, slotKey, mode) {
+    if (!g || g.over || g.turn !== pid) return { ok: false, msg: '不是你的回合' };
+    const u = unitAt(g, slotKey);
+    if (!u || u.owner !== pid) return { ok: false, msg: '不是你的单位' };
+    if (mode === 'cancel') {
+      if (u.guard !== 'firm') return { ok: false, msg: '没有在坚守' };
+      if (!canUnitAct(g, pid, u)) return { ok: false, msg: '这张牌本回合已行动' };
+      return { ok: true, u };
+    }
+    if (u.justPlayed) return { ok: false, msg: '刚落下的牌本回合不能行动' };
+    if (u.guard === 'firm') return { ok: false, msg: '已在坚守防御中' };
+    if (!canUnitAct(g, pid, u)) return { ok: false, msg: '这张牌本回合已行动' };
+    if (mode === 'hasty' && g.turnNo - u.hastyTurn <= 2) return { ok: false, msg: '仓促防御不能连续使用' };
+    return { ok: true, u };
+  }
+
+  function defend(g, pid, slotKey, mode) {
+    const v = defendValid(g, pid, slotKey, mode);
+    if (!v.ok) return v;
+    const u = v.u, p = g.players[pid];
+    spendUnitAction(u);
+    if (mode === 'cancel') {
+      u.guard = null;
+      log(g, pid, 'defend', `${p.name} 的「${u.card.name}」解除坚守`);
+      return { ok: true };
+    }
+    if (mode === 'firm') {
+      u.guard = 'firm';
+      log(g, pid, 'defend', `${p.name} 的「${u.card.name}」坚守防御：攻击伤害减半，直到解除`);
+      return { ok: true };
+    }
+    u.guard = 'hasty';
+    u.hastyTurn = g.turnNo;
+    log(g, pid, 'defend', `${p.name} 的「${u.card.name}」仓促防御：下次受到的攻击伤害减半`);
+    return { ok: true };
+  }
+
+  function forecast(g, pid, fromKey, toKey) {
+    const a = unitAt(g, fromKey), t = unitAt(g, toKey);
+    if (!a || !t || a.owner !== pid || t.owner === pid) return null;
+    const over = ELEMENTS[a.card.element].over === t.card.element;
+    const chierBonus = g.character === 'chier' && pid === HUMAN && (g.chierAttacks || 0) < 2 ? 2 : 0;
+    const base = Math.max(0, a.atk + (a.fieldDmg || 0) + (over ? 1 : 0)) + chierBonus;
+    const mult = a.mult || 1;
+    let dmg = base * mult;
+    const absorbed = Math.min(t.shield, dmg);
+    let afterShield = dmg - absorbed;
+    const armor = t.fieldArmor || 0, vuln = t.fieldVuln || 0;
+    const raw = Math.max(0, afterShield - armor + vuln);
+    const guarded = t.guard ? Math.ceil(raw / 2) : raw;
+    const halved = raw - guarded;
+    const chierReduce = g.character === 'chier' && t.owner === HUMAN ? 4 : 0;
+    const final = Math.max(0, guarded - chierReduce);
+    return { base, mult, over, fieldDmg: a.fieldDmg || 0, absorbed, afterShield, armor, vuln, guard: t.guard || null, halved, chierBonus, chierReduce, dmg: final, hpAfter: Math.max(0, t.hp - final), kill: t.hp - final <= 0, burn: !!a.fieldBurnOnHit, range: a.range };
+  }
+
   function attack(g, pid, fromKey, toKey) {
     if (!g || g.over || g.turn !== pid) return { ok: false, msg: '不是你的回合' };
     const a = unitAt(g, fromKey), t = unitAt(g, toKey);
@@ -228,15 +381,27 @@
     if (!t || t.owner === pid) return { ok: false, msg: '目标不是敌方单位' };
     if (a.justPlayed) return { ok: false, msg: '刚落下的牌本回合不能攻击' };
     if (!canUnitAct(g, pid, a)) return { ok: false, msg: '这张牌本回合已行动' };
+    if (a.guard === 'firm') return { ok: false, msg: '坚守中不能攻击' };
     if (ringDist(fromKey, toKey) > a.range) return { ok: false, msg: '超出攻击距离' };
+    let chierBonus = 0;
+    if (g.character === 'chier' && pid === HUMAN) {
+      if ((g.chierAttacks || 0) >= 2) return { ok: false, msg: '痴戾：本回合最多两张己方人物攻击' };
+      g.chierAttacks = (g.chierAttacks || 0) + 1;
+      chierBonus = 2;
+    }
     spendUnitAction(a);
     if (a.attackBan > 0) {
       a.attackBan = 0; a.banTurns = 0;
       log(g, pid, 'attack', `${g.players[pid].name} 的「${a.card.name}」攻击被「止」化去`);
       return { ok: true, nullified: true };
     }
+    if (pid === HUMAN && g.mods && g.mods.missChance && Math.random() < g.mods.missChance) {
+      log(g, pid, 'attack', `地魂失魄：「${a.card.name}」的攻击落空`);
+      return { ok: true, missed: true };
+    }
     const over = ELEMENTS[a.card.element].over === t.card.element;
-    let dmg = Math.max(0, a.atk + (a.fieldDmg || 0) + (over ? 1 : 0));
+    const metaBonus = (pid === HUMAN && g.mods && g.mods.damageDealt) || 0;
+    let dmg = Math.max(0, a.atk + (a.fieldDmg || 0) + (over ? 1 : 0)) + chierBonus + metaBonus;
     const mult = a.mult || 1;
     dmg *= mult;
     if (a.multUses > 0) { a.multUses--; if (a.multUses === 0) a.mult = 1; }
@@ -244,8 +409,38 @@
     t.shield -= absorbed;
     dmg -= absorbed;
     dmg = Math.max(0, dmg - (t.fieldArmor || 0) + (t.fieldVuln || 0));
+    let halved = 0;
+    if (t.guard) {
+      const before = dmg;
+      dmg = Math.ceil(dmg / 2);
+      halved = before - dmg;
+      // 仓促防御只挡一次，坚守防御持续生效
+      if (t.guard === 'hasty') t.guard = null;
+    }
+    const chierReduce = g.character === 'chier' && t.owner === HUMAN ? 4 : 0;
+    if (chierReduce) dmg = Math.max(0, dmg - chierReduce);
+    let immune = false;
+    if (t.immuneOnce) {
+      t.immuneOnce = false;
+      immune = true;
+      dmg = 0;
+      log(g, pid, 'term', `吞贼：${t.card.name} 免疫了这次伤害`);
+    }
+    const metaReduce = (t.owner === HUMAN && g.mods && g.mods.damageTaken) || 0;
+    if (metaReduce) dmg = Math.max(0, dmg - metaReduce);
     t.hp -= dmg;
-    log(g, pid, 'attack', `${g.players[pid].name} 的「${a.card.name}」→「${t.card.name}」：${a.atk}${a.fieldDmg ? (a.fieldDmg > 0 ? '+1' : '-1') : ''}${over ? '+克1' : ''}${mult > 1 ? '×' + mult : ''}，盾挡 ${absorbed}，实伤 ${dmg}（${Math.max(0, t.hp)}/${t.maxHp}）`);
+    log(g, pid, 'attack', `${g.players[pid].name} 的「${a.card.name}」→「${t.card.name}」：${a.atk}${a.fieldDmg ? (a.fieldDmg > 0 ? '+1' : '-1') : ''}${over ? '+克1' : ''}${chierBonus ? '+痴2' : ''}${metaBonus ? (metaBonus > 0 ? '+' : '') + metaBonus : ''}${mult > 1 ? '×' + mult : ''}，盾挡 ${absorbed}${halved ? `，防御减半 -${halved}` : ''}${chierReduce ? `，痴相 -${chierReduce}` : ''}${immune ? '，免疫' : ''}，实伤 ${dmg}（${Math.max(0, t.hp)}/${t.maxHp}）`);
+    const extraChance = (a.summon && a.summon.type === 'avatar' && a.summon.key === 'di' ? .3 : 0)
+      + (pid === HUMAN && g.mods ? (g.mods.extraAttackChance || 0) : 0);
+    if (!immune && t.hp > 0 && extraChance && Math.random() < extraChance) {
+      const extra = Math.max(1, Math.ceil(a.atk / 2));
+      t.hp -= extra;
+      log(g, pid, 'attack', `追魂再攻：「${a.card.name}」追加 ${extra} 伤害（${Math.max(0, t.hp)}/${t.maxHp}）`);
+    }
+    if (pid === HUMAN && g.mods && g.mods.poisonOnHit && t.hp > 0) {
+      applyPoison(t, 1);
+      log(g, pid, 'term', `非毒：${t.card.name} 获得 1 层剧毒`);
+    }
     if (a.fieldBurnOnHit) { applyBurn(t); log(g, pid, 'term', `「${t.card.name}」被点燃（灼烧 2 回合）`); }
     if (a.weapon && a.weapon.spear) {
       const w = a.weapon; removeWeapon(a, w);
@@ -261,9 +456,24 @@
     u.dead = true;
     const p = g.players[u.owner];
     if (g.board[u.slot] && g.board[u.slot].unit === u) g.board[u.slot] = null;
-    if (p.cardState[u.cardId] === 'board') { p.cardState[u.cardId] = 'dead'; p.dead.push(u.cardId); }
+    if (!u.summon && p.cardState[u.cardId] === 'board') { p.cardState[u.cardId] = 'dead'; p.dead.push(u.cardId); }
     if (u.weapon) { u.weapon = null; u.weaponHp = 0; }
     log(g, u.owner, 'death', `${p.name} 的「${u.card.name}」阵亡（${cause}）· 余 ${remaining(p)}/8`);
+    if (u.summon) {
+      const s = u.summon;
+      g.summon = null;
+      if (s.type === 'avatar') {
+        g.lostHuns.push(s.key);
+        log(g, u.owner, 'death', `化身消散：永久失去${(D.HUNS.find(h => h.key === s.key) || {}).name || s.key}（本局已失 ${g.lostHuns.length}/3 魂）`);
+        if (g.lostHuns.length >= 3) {
+          g.over = true; g.winner = other(u.owner);
+          log(g, -1, 'end', `三魂尽失 · ${g.players[g.winner].name} 胜`);
+        }
+      } else {
+        g.pseudoPos.push(s.key);
+        log(g, u.owner, 'death', `分身消散：${(D.POS.find(p => p.key === s.key) || {}).name || s.key}转为伪魄`);
+      }
+    }
   }
 
   /* ---------- 技能 ---------- */
@@ -384,6 +594,133 @@
     return { ok: true };
   }
 
+  /* ---------- 角色 · 道童 ---------- */
+  function charGuard(g, pid, key) {
+    if (!g || g.over) return { ok: false, msg: '对局已结束' };
+    if (g.turn !== pid) return { ok: false, msg: '不是你的回合' };
+    if (g.character !== 'daotong') return { ok: false, msg: '当前角色没有这个技能' };
+    if (g.charUsed[key]) return { ok: false, msg: '本回合已经用过了' };
+    return { ok: true };
+  }
+
+  // 求签：系统按双方场面强弱判签，签文只回给求签者
+  function sign(g, pid) {
+    const guard = charGuard(g, pid, 'sign');
+    if (!guard.ok) return guard;
+    const mine = ownUnits(g, pid).map(k => unitAt(g, k));
+    if (!mine.length) return { ok: false, msg: '场上没有己方人物牌，签无可依' };
+    const foes = ownUnits(g, other(pid)).map(k => unitAt(g, k));
+    const hpRatio = list => list.length ? list.reduce((s, u) => s + u.hp / u.maxHp, 0) / list.length : 0;
+    const fieldScore = list => list.reduce((s, u) => s + u.fieldDmg * .8 + u.fieldArmor * .6 - u.fieldVuln * .6 + u.shield * .05, 0);
+    const adv = (mine.length - foes.length) * 1.4
+      + (hpRatio(mine) - hpRatio(foes)) * 3
+      + (mine.reduce((s, u) => s + u.atk, 0) - foes.reduce((s, u) => s + u.atk, 0)) / 12
+      + (fieldScore(mine) - fieldScore(foes)) * .15;
+    const favor = Math.max(.12, Math.min(.88, .5 + adv * .07));
+    const roll = Math.random();
+    let idx;
+    if (roll < .05 + favor * .18) idx = 0;
+    else if (roll < .25 + favor * .28) idx = 1;
+    else if (roll < .6) idx = 2;
+    else if (roll < .85) idx = 3;
+    else idx = 4;
+    const tier = D.SIGNS[idx];
+    for (const u of mine) {
+      if (idx === 0) { u.atk += 2; u.maxHp += 2; u.hp += 2; }
+      else if (idx === 1) { u.atk += 1; u.hp = Math.min(u.maxHp, u.hp + 3); }
+      else if (idx === 2) u.hp = Math.min(u.maxHp, u.hp + 4);
+      else if (idx === 3) u.hp = Math.min(u.maxHp, u.hp + 2);
+      else u.atk = Math.max(0, u.atk - 1);
+    }
+    const reason = mine.length > foes.length ? '我方人多势众'
+      : mine.length < foes.length ? '我方势单'
+      : hpRatio(mine) >= hpRatio(foes) ? '双方相持，我方气足' : '双方相持，敌方气盛';
+    g.charUsed.sign = true;
+    g.charResult = { kind: 'sign', tier: tier.key, tone: tier.tone, effect: tier.effect, reason };
+    log(g, pid, 'sign', '求签：签已入筒，签文只在求签者角色面板显示');
+    return { ok: true, sign: tier.key, tier: tier.key, effect: tier.effect, reason, kills: 0 };
+  }
+
+  // 卜卦：三枚铜钱，三背老阳伤敌，三字老阴伤己，其余无事
+  function divine(g, pid) {
+    const guard = charGuard(g, pid, 'divine');
+    if (!guard.ok) return guard;
+    const coins = [0, 1, 2].map(() => Math.random() < .5 ? '背' : '字');
+    const bei = coins.filter(c => c === '背').length;
+    let type, effect = '无效果', targets = [];
+    if (bei === 3) {
+      type = '老阳'; effect = '敌方全体 -2 攻 / -2 血';
+      targets = ownUnits(g, other(pid)).map(k => unitAt(g, k));
+      for (const u of targets) {
+        u.atk = Math.max(0, u.atk - 2);
+        u.hp -= 2;
+        log(g, pid, 'divine', `老阳：敌方「${u.card.name}」-2 攻 / -2 血（${Math.max(0, u.hp)}/${u.maxHp}）`);
+      }
+    } else if (bei === 0) {
+      type = '老阴'; effect = '己方全体 -1 攻 / -1 血';
+      targets = ownUnits(g, pid).map(k => unitAt(g, k));
+      for (const u of targets) {
+        u.atk = Math.max(0, u.atk - 1);
+        u.hp -= 1;
+        log(g, pid, 'divine', `老阴：己方「${u.card.name}」-1 攻 / -1 血（${Math.max(0, u.hp)}/${u.maxHp}）`);
+      }
+    } else {
+      type = bei === 1 ? '少阳' : '少阴';
+    }
+    let kills = 0;
+    for (const u of targets) {
+      if (u.hp <= 0 && !u.dead) { killUnit(g, u, '卜卦'); kills++; }
+    }
+    g.charUsed.divine = true;
+    g.charResult = { kind: 'divine', coins, type, effect, kills };
+    log(g, pid, 'divine', `卜卦：${coins.join(' ')} · ${type} · ${effect}`);
+    checkEnd(g);
+    return { ok: true, coins, type, effect, kills };
+  }
+
+  // 清风道长：化身（三魂）/ 分身（七魄），每局各 1 次，不可同时在场
+  function summon(g, pid, type, key) {
+    if (!g || g.over || g.turn !== pid) return { ok: false, msg: '不是你的回合' };
+    if (g.character !== 'qingfeng') return { ok: false, msg: '当前角色没有化身/分身' };
+    if (type !== 'avatar' && type !== 'clone') return { ok: false, msg: '未知化身类型' };
+    if (g.charUsedGame[type]) return { ok: false, msg: '本局已经用过' };
+    if (g.summon) return { ok: false, msg: '化身与分身不可同时在场' };
+    const list = type === 'avatar' ? (D.HUNS || []) : (D.POS || []);
+    const picked = list.find(x => x.key === key);
+    if (!picked) return { ok: false, msg: '请选择一魂/一魄' };
+    if (type === 'avatar' && (g.lostHuns || []).includes(key)) return { ok: false, msg: '这一魂已经失去' };
+    const owned = ownUnits(g, pid);
+    if (type === 'clone' && owned.length >= BOARD_MAX) return { ok: false, msg: '分身受场上 3 张上限限制' };
+    const slot = RING.find(k => !g.board[k]);
+    if (!slot) return { ok: false, msg: '场上没有空卦位' };
+    const repId = type === 'avatar' ? 'zhen-changnan' : 'dui-changnv';
+    const base = CARDS[repId];
+    const name = type === 'avatar' ? `化身·${picked.name}` : `分身·${picked.name}`;
+    const card = Object.assign({}, base, {
+      name, attr: type === 'avatar' ? '木' : '金',
+      element: type === 'avatar' ? 'wood' : 'metal',
+      role: type === 'avatar' ? '化身' : '分身',
+    });
+    let atk = 20, hp = type === 'avatar' ? 40 : 30;
+    if (type === 'avatar' && key === 'tian') atk = Math.round(atk * 1.5);
+    if (type === 'avatar' && key === 'ren') hp = Math.round(hp * 1.3);
+    const u = {
+      cardId: repId, owner: pid, slot, card,
+      atk, maxHp: hp, hp,
+      weapon: null, weaponHp: 0, shield: 0, shieldMax: 0, tempShield: 0, range: 1,
+      acted: false, justPlayed: true, extraActions: 0, mult: 1, multUses: 0,
+      burn: 0, attackBan: 0, skillBan: 0, banTurns: 0,
+      guard: null, hastyTurn: -99, poison: 0, poisonAdded: false,
+      fieldDmg: 0, fieldArmor: 0, fieldVuln: 0, fieldBurnOnHit: false, dead: false,
+      summon: { type, key, name },
+    };
+    g.board[slot] = { unit: u };
+    g.charUsedGame[type] = true;
+    g.summon = { type, key, name, slot, unit: u };
+    log(g, pid, 'skill', `清风道长以「${name}」入场（${u.atk}/${u.hp} · ${type === 'avatar' ? '不占 3 张上限' : '占 3 张上限'}）`);
+    return { ok: true, unit: u, slot };
+  }
+
   function checkEnd(g) {
     if (g.over) return;
     for (const p of g.players) {
@@ -404,16 +741,21 @@
   }
   function attackTargets(g, pid, fromKey) {
     const u = unitAt(g, fromKey);
-    if (!u || u.owner !== pid || !canUnitAct(g, pid, u)) return [];
+    if (!u || u.owner !== pid || u.guard === 'firm' || !canUnitAct(g, pid, u)) return [];
     return RING.filter(k => { const t = unitAt(g, k); return t && t.owner !== pid && ringDist(fromKey, k) <= u.range; });
   }
   function moveTargets(g, pid, fromKey) {
     const u = unitAt(g, fromKey);
-    if (!u || u.owner !== pid || !canUnitAct(g, pid, u)) return [];
+    if (!u || u.owner !== pid || u.guard === 'firm' || !canUnitAct(g, pid, u)) return [];
     return adjacent(fromKey).filter(k => !g.board[k]);
   }
   function equipTargets(g, pid) {
-    return ownUnits(g, pid).filter(k => { const u = unitAt(g, k); return canUnitAct(g, pid, u) && !u.weapon; });
+    return ownUnits(g, pid).filter(k => { const u = unitAt(g, k); return canUnitAct(g, pid, u) && !u.weapon && u.guard !== 'firm'; });
+  }
+  // 可发起防御的单位；mode: hasty=仓促，firm=坚守，cancel=解除坚守
+  function defendTargets(g, pid, mode) {
+    if (!g || g.over || g.turn !== pid) return [];
+    return ownUnits(g, pid).filter(k => defendValid(g, pid, k, mode).ok);
   }
   function rangeEnemies(g, slotKey) {
     const u = unitAt(g, slotKey);
@@ -426,7 +768,9 @@
 
   window.Engine = {
     HUMAN, FOE, HAND, BOARD_MAX, WIN_DEAD, RING, CARDS, WEAPONS, SKILLS, TERMS,
-    newGame, startTurn, startRound, endTurn, place, attack, equip, move, useSkill,
+    newGame, startTurn, startRound, endTurn, place, attack, equip, move, useSkill, forecast,
+    sign, divine, summon,
+    defend, defendValid, defendTargets, applyPoison,
     skillValid, skillMatches, placement, validSlots, attackTargets, moveTargets,
     equipTargets, skillTargets, rangeEnemies, ownUnits, unitAt, ringDist, adjacent, canUnitAct,
     viewOrder, viewIndex, seatSlot, farSlot, firstPlayer, other, remaining,
