@@ -647,7 +647,7 @@
       const card = box && box.querySelector(`[data-weapon="${key}"]`);
       if (card) card.classList.add('inspect');
       const targets = g ? E.equipTargets(g, HUMAN).length : 0;
-      el.innerHTML = `<b>${w.name}</b><span class="sdmeta">${w.type === 'melee' ? '近战' : w.type === 'ranged' ? '远程' : '盾牌'}${w.range > 1 ? ' · 距离 2' : ''} · ${w.atk ? '攻' + (w.atk > 0 ? '+' : '') + w.atk + ' ' : ''}${w.hp ? '血' + (w.hp > 0 ? '+' : '') + w.hp + ' ' : ''}${w.shield ? '盾' + w.shield : ''}</span><div>${w.desc}</div><div class="sdhint">双击装备 · 当前可装备单位 ${targets} 张</div>`;
+      el.innerHTML = `<b>${w.name}</b><span class="sdmeta">${w.type === 'melee' ? '近战' : w.type === 'ranged' ? '远程' : '盾牌'}${w.range > 1 ? ' · 距离 2' : ''} · ${w.atk ? '攻' + (w.atk > 0 ? '+' : '') + w.atk + ' ' : ''}${w.hp ? '血' + (w.hp > 0 ? '+' : '') + w.hp + ' ' : ''}${w.shield ? '盾' + w.shield : ''}</span><div>${w.desc}</div><div class="sdhint">双击装备，或点下面的按钮 · 当前可装备单位 ${targets} 张</div><div class="sduse"><button data-use-weapon="${key}">装备这件武器</button></div>`;
       return;
     }
     const sk = D.SKILL_BY_KEY[key], p = g ? g.players[HUMAN] : null;
@@ -655,7 +655,7 @@
     const card = box && box.querySelector(`[data-skill="${key}"]`);
     if (card) card.classList.add('inspect');
     const left = p ? 2 - (p.skillUses[key] || 0) : 2;
-    el.innerHTML = `<b>${sk.name}</b><span class="sdmeta">${sk.attr}/${sk.role} · 整局剩余 ${left}/2 · ${g && g.skillsUsedThisTurn[key] ? '本手已用' : '本手可用'}</span><div>${sk.desc}</div><div class="sdhint">双击后选择场上角色施放；不想用点“返回”。</div>`;
+    el.innerHTML = `<b>${sk.name}</b><span class="sdmeta">${sk.attr}/${sk.role} · 整局剩余 ${left}/2 · ${g && g.skillsUsedThisTurn[key] ? '本手已用' : '本手可用'}</span><div>${sk.desc}</div><div class="sdhint">双击施放，或点下面的按钮后选择场上角色；不想用点“返回”。</div><div class="sduse"><button data-use-skill="${key}">施放这个技能</button></div>`;
   }
   function openSheet(kind) {
     if (!S.g || S.g.over) return;
@@ -1201,6 +1201,10 @@
       const sheet = $(id);
       if (!sheet) continue;
       sheet.addEventListener('click', e => {
+        const uw = e.target.closest('[data-use-weapon]');
+        if (uw) { tryUseWeaponFromSheet(uw.dataset.useWeapon); return; }
+        const us = e.target.closest('[data-use-skill]');
+        if (us) { tryUseSkillFromSheet(us.dataset.useSkill); return; }
         if (e.target === sheet || e.target.closest('[data-sheet-close]')) closeSheets();
       });
     }

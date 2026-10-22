@@ -1454,6 +1454,16 @@ body.pixelbody { -webkit-font-smoothing: none; text-rendering: geometricPrecisio
 #app.mobile.pixel .px-sheet .sheetdetail .sdmeta { display: block; color: var(--px-cyan); font-size: 8px; margin: 1px 0 3px; }
 #app.mobile.pixel .px-sheet .sheetdetail .sdhint { color: var(--px-paper2); }
 #app.mobile.pixel .px-sheet .sheetdetail .sderr { color: #ff9c8a; }
+#app.mobile.pixel .px-sheet .sheetdetail .sduse { margin-top: 5px; }
+#app.mobile.pixel .px-sheet .sheetdetail .sduse button {
+  padding: 4px 8px;
+  background: #1a2224;
+  border: 2px solid var(--px-gold2);
+  color: var(--px-gold);
+  font-size: 9px;
+  box-shadow: 2px 2px 0 #000;
+}
+#app.mobile.pixel .px-sheet .sheetdetail .sduse button:hover { border-color: var(--px-gold); }
 #app.mobile.pixel .px-sheet-foot {
   display: flex;
   justify-content: flex-end;
