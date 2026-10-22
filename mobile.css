@@ -121,3 +121,34 @@ html, body { height: auto; min-height: 100%; overflow-x: hidden; overflow-y: aut
 #app.mobile .starttrigrams { gap: 4px; }
 #app.mobile .starttrigrams span { font-size: 9px; padding: 1px 4px; }
 #app.mobile .startbtns { flex-wrap: wrap; }
+
+/* v2 手机端 */
+#app.mobile .opppublic {
+  height: auto; flex-wrap: wrap; padding: 3px 0 2px; gap: 5px;
+}
+#app.mobile .opppublic .figmask { transform: scale(.55); }
+#app.mobile .opppublic .figmeta b { font-size: 9px; }
+#app.mobile .opppublic .figmeta span { font-size: 5.5px; }
+#app.mobile .oplabel { font-size: 5.5px; }
+#app.mobile .htile.mini { width: 21px; height: 27px; }
+#app.mobile .htile.mini .hport svg { width: 17px; height: 19px; }
+#app.mobile .htile.mini span { font-size: 4.6px; }
+#app.mobile .wmini { font-size: 6.5px; padding: 0 3px; }
+#app.mobile .handwrap { gap: 3px; }
+#app.mobile .handhead { flex-basis: 15px; font-size: 6.5px; }
+#app.mobile .hand {
+  display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 56px);
+  gap: 3px; height: auto; flex: 0 0 auto; overflow: visible; padding: 0;
+}
+#app.mobile .htile { height: 56px; padding: 2px 4px; gap: 3px; }
+#app.mobile .htile .hport { flex-basis: 22px; }
+#app.mobile .htile .hport svg { width: 22px; height: 25px; }
+#app.mobile .htile .hname { font-size: 8.5px; }
+#app.mobile .htile .hstats { font-size: 6.5px; }
+#app.mobile .htile .hstate { font-size: 5px; }
+#app.mobile .season .fgrow { font-size: 7px; }
+#app.mobile .season .termline { font-size: 6px; }
+#app.mobile .fieldguide .fgrow { font-size: 7.5px; }
+#app.mobile .diffbtns { flex-direction: column; gap: 4px; }
+#app.mobile .diff { padding: 5px 7px; }
+#app.mobile .ubadges .st { font-size: 4.8px; }
