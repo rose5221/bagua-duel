@@ -305,3 +305,112 @@ button.primary:hover { background: var(--fire); border-color: var(--fire); color
 /* 可选目标：落子用朱砂，攻击用更粗的朱砂 */
 .slot.valid .cempty { border-color: var(--fire); box-shadow: 0 0 0 2px var(--fire), inset 0 0 0 1px rgba(180,71,47,.25); }
 .slot.target .unit { outline: 2.5px solid var(--fire); outline-offset: 1px; box-shadow: 0 0 0 3px rgba(180,71,47,.2), 1px 2px 0 rgba(0,0,0,.35); }
+
+/* ================= v2：8 张手牌 / 场上 3 / 公开手牌 / 场地 ================= */
+.opppublic {
+  position: relative; z-index: 3; height: 84px; width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+}
+.opppublic .figbox { flex: 0 0 auto; }
+.opppublic .figmask { transform: scale(.8); }
+.oppu { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.oplabel { font-family: var(--mono); font-size: 6.5px; letter-spacing: .12em; color: var(--ink4); }
+.ophand { display: flex; gap: 2px; }
+.opweapons { display: flex; gap: 3px; align-items: center; }
+.wmini { padding: 1px 4px; font-size: 8px; color: var(--paper1); background: #151A1C; border: 1px solid #3E4649; border-radius: 1px; }
+.wmini:hover { border-color: var(--metal); }
+.none { font-size: 8px; color: var(--ink3); }
+.sbdiff { font-family: var(--mono); font-size: 7px; color: var(--metal); }
+
+.htile.mini {
+  width: 26px; height: 32px; padding: 1px; gap: 0; display: flex; flex-direction: column; align-items: center;
+  background: var(--paper0); border: 1px solid #5D676A; border-radius: 1px;
+}
+.htile.mini .hport { display: block; }
+.htile.mini .hport svg { width: 20px; height: 22px; display: block; }
+.htile.mini span { font-size: 5.5px; color: var(--ink1); line-height: 1; }
+.htile.mini.dead { opacity: .25; filter: grayscale(1); }
+.htile.mini.board { opacity: .4; }
+.htile.mini.sel { outline: 1px solid var(--fire); }
+
+.handwrap { display: flex; flex-direction: column; gap: 4px; min-width: 0; min-height: 0; }
+.handhead {
+  flex: 0 0 17px; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font-family: var(--mono); font-size: 7.5px; color: var(--ink4);
+  border-bottom: 1px solid #2C3437; padding: 0 2px;
+}
+.handhead span:nth-child(2) { color: var(--metal); }
+.handhead span:nth-child(3) { color: var(--fire); }
+.dock .hand {
+  flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr);
+  gap: 4px; padding: 0; overflow: hidden; align-items: stretch;
+}
+.htile {
+  position: relative; min-width: 0; min-height: 0; display: flex; align-items: center; gap: 5px;
+  padding: 3px 5px; text-align: left; background: var(--paper0); color: var(--ink0);
+  border: 1px solid #6E777B; border-radius: 2px; overflow: hidden;
+}
+.htile:hover { border-color: var(--fire); background: #FFF9EC; }
+.htile.sel { outline: 2px solid var(--fire); outline-offset: 1px; }
+.htile.board { opacity: .42; }
+.htile.dead { opacity: .25; filter: grayscale(1); }
+.htile .hport { flex: 0 0 30px; display: grid; place-items: center; }
+.htile .hport svg { display: block; width: 30px; height: 34px; }
+.htile .hname { min-width: 0; flex: 1; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.htile .hstats { font-family: var(--mono); font-size: 8px; color: var(--ink2); }
+.htile .hstate { position: absolute; right: 2px; top: 2px; font-family: var(--mono); font-size: 6px; color: var(--fire); }
+.htile .hstate.dead { color: var(--ink2); }
+
+.season .fghead { font-size: 7px; letter-spacing: .18em; color: var(--fire); margin-bottom: 3px; }
+.fgrow {
+  display: flex; align-items: baseline; gap: 5px; padding: 2px 0;
+  border-bottom: 1px dashed #293033; font-size: 7.5px; line-height: 1.45; color: var(--ink4);
+  white-space: nowrap; overflow: hidden;
+}
+.fgrow b { flex: 0 0 14px; color: var(--c); font-weight: 600; }
+.fgrow span { overflow: hidden; text-overflow: ellipsis; }
+.termline { margin-top: 4px; font-family: var(--mono); font-size: 7px; color: var(--ink3); }
+
+.slot.move .cempty { border-color: var(--water); box-shadow: 0 0 0 2px var(--water); }
+.slot.equipable .unit { outline: 2px solid var(--metal); outline-offset: 1px; cursor: pointer; }
+.slot.skillable .unit { outline: 2px solid var(--wood); outline-offset: 1px; cursor: pointer; }
+.slot.ally .unit { outline: 2px solid #6E9B6E; outline-offset: 1px; cursor: pointer; }
+.unit .uweapon {
+  position: absolute; right: 1px; top: 1px; font-family: var(--mono); font-size: 6px;
+  color: var(--paper0); background: rgba(23,25,27,.78); padding: 0 2px; border-radius: 1px; z-index: 2;
+}
+.ubadges { position: absolute; left: 1px; right: 1px; bottom: 17px; display: flex; flex-wrap: wrap; gap: 1px; z-index: 2; }
+.ubadges .st { position: static; font-style: normal; font-family: var(--mono); font-size: 5.5px; padding: 0 2px; border-radius: 1px; background: var(--ink0); color: var(--paper0); }
+.ubadges .st.buff { background: var(--fire); }
+.ubadges .st.debuff { background: var(--water); }
+.ubadges .st.armor { background: var(--earth); }
+.ubadges .st.vuln { background: #8A5A4A; }
+.ubadges .st.fire { background: var(--fire); }
+.ubadges .st.burn { background: #7A3A28; }
+.ubadges .st.new { background: var(--metal); color: var(--ink0); }
+.ubadges .st.done { background: #5A6265; }
+.ubadges .st.extra { background: var(--wood); }
+.ubadges .st.ban { background: var(--fire); }
+.ubadges .st.sban { background: var(--water); }
+
+.diffhead { font-size: 8px; letter-spacing: .22em; color: var(--fire); margin: 10px 0 5px; }
+.diffbtns { display: flex; gap: 6px; margin-bottom: 14px; }
+.diff {
+  flex: 1; text-align: left; padding: 7px 8px; background: #171C1E; color: var(--text);
+  border: 1px solid #3C4447; display: flex; flex-direction: column; gap: 2px;
+}
+.diff b { font-size: 11px; color: var(--paper0); font-weight: 500; }
+.diff span { font-size: 8px; line-height: 1.4; color: var(--ink4); }
+.diff.sel { border-color: var(--paper0); box-shadow: 0 0 0 1px var(--paper0); background: #232A2D; }
+.diff:hover b { color: var(--fire); }
+
+.fieldguide { margin-top: 10px; border-top: 1px solid var(--ink3); padding-top: 7px; }
+.fieldguide .fghead { font-size: 8px; letter-spacing: .2em; color: var(--fire); margin-bottom: 4px; }
+.fieldguide .fgrow { font-size: 9px; color: var(--ink1); border-bottom: 1px dashed var(--ink4); }
+.fieldguide .fgrow b { flex-basis: 20px; }
+.skill .skcond .uses { color: var(--metal); font-weight: 600; }
+.skill.used { opacity: .4; }
+
+/* v2 手牌高度收口：两行各 60，避免撑出底栏 */
+.dock .hand { grid-template-rows: repeat(2, 60px); }
+.htile { height: 60px; }
