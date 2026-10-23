@@ -8,7 +8,7 @@
   const TAIJI = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="48" fill="#F7F3E8" stroke="#17191B" stroke-width="2"/><path d="M50 2 A48 48 0 0 1 50 98 A24 24 0 0 1 50 50 A24 24 0 0 0 50 2 Z" fill="#17191B"/><circle cx="50" cy="26" r="7.5" fill="#F7F3E8"/><circle cx="50" cy="74" r="7.5" fill="#17191B"/></svg>';
   const TAIJI_FIRE = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="48" fill="#F7F3E8" stroke="#17191B" stroke-width="2"/><path d="M50 2 A48 48 0 0 1 50 98 A24 24 0 0 1 50 50 A24 24 0 0 0 50 2 Z" fill="#B4472F"/><circle cx="50" cy="26" r="7.5" fill="#F7F3E8"/><circle cx="50" cy="74" r="7.5" fill="#B4472F"/></svg>';
 
-  const S = { g: null, sel: null, mode: null, extra: null, preview: null, pending: null, difficulty: 'normal', character: 'daotong', charChoice: null, metaSettled: false, aiTimer: 0, lastTerm: '', lastRound: 0, flash: '', flashTimer: 0 };
+  const S = { g: null, sel: null, mode: null, extra: null, preview: null, pending: null, difficulty: 'normal', character: 'daotong', charChoice: null, metaSettled: false, lossChoice: null, aiTimer: 0, lastTerm: '', lastRound: 0, flash: '', flashTimer: 0 };
 
   /* ---------- 天气层 ---------- */
   const FX = (function () {
@@ -160,7 +160,7 @@
     el.innerHTML = `<div class="panel startpanel">
       <div class="kick">BAGUA DUEL · 64</div>
       <h1>八卦对决</h1>
-      <p class="lead">两个人面对面，中间一张八卦盘；开局纯黑，方位随机。<br>每人 4 属性 × 8 张 = 32 张牌库；单局准备选 2 属性 × 4 张 = 8 张出战；场上最多 3 张。</p>
+      <p class="lead">两个人面对面，中间一张八卦盘；开局纯黑，方位随机。<br>每人 4 属性 × 8 张 = 32 张牌库；入座后随机取 2 属性 × 4 张 = 8 张出战；场上最多 3 张。</p>
       <div class="startrow">
         <div class="startbox"><b>行动</b><span>每回合落 1 张人物牌；场上每张牌各攻击 / 装备 / 移动一次；技能最多 2 张。</span></div>
         <div class="startbox"><b>场地</b><span>每轮开始按卦位五行触发：相生、同五行、相克各有不同效果。</span></div>
@@ -178,8 +178,8 @@
       <div class="runmeta">弈魂 · 第 ${run ? run.round : 1} 局 · 魂 ${runH}/3 · 魄 ${runP}/7 · 献祭 ${run ? run.sacrifices : 0}</div>
       <div class="diffhead">人机难度</div>
       <div class="diffbtns">${DIFFICULTY.map(d => `<button class="diff ${S.difficulty === d.key ? 'sel' : ''}" data-diff="${d.key}"><b>${d.name}</b><span>${d.desc}</span></button>`).join('')}</div>
-      <div class="startbtns"><button class="primary" id="btnStart">选牌入座</button><button id="btnRules2">规则</button></div>
-      <div class="startfoot">${chierOpen ? '四角色均可选' : '坐北朝南先手 · 道童 / 清风 / 旁门可选；痴儿连续三次老阴解锁'} · 单局准备选 2 属性 × 4 张</div>
+      <div class="startbtns"><button class="primary" id="btnStart">入座</button><button id="btnRules2">规则</button></div>
+      <div class="startfoot">${chierOpen ? '四角色均可选' : '坐北朝南先手 · 道童 / 清风 / 旁门可选；痴儿连续三次老阴解锁'} · 随机 2 属性 × 4 张出战</div>
     </div>`;
     el.classList.add('show');
     el.querySelectorAll('.diff').forEach(b => b.onclick = () => {
@@ -192,7 +192,7 @@
       if (meta) meta.selectCharacter(S.character);
       el.querySelectorAll('.charpick-btn').forEach(x => x.classList.toggle('sel', x === b));
     });
-    $('btnStart').onclick = () => { el.classList.remove('show'); showPrep(); };
+    $('btnStart').onclick = () => { el.classList.remove('show'); startGame(); };
     $('btnRules2').onclick = showRules;
   }
 
@@ -304,7 +304,7 @@
     el.innerHTML = `<div class="panel rulespanel">
       <div class="phead"><h2>规则</h2><button id="rulesClose">收起</button></div>
       <div class="rulegrid">
-        <div><b>牌组</b><p>8 属性 × 8 家庭成员共 64 张。每人随机 4 个属性组成 32 张牌库；单局准备从中选 2 属性 × 4 张 = 8 张；场上最多 3 张。</p></div>
+        <div><b>牌组</b><p>8 属性 × 8 家庭成员共 64 张。每人随机 4 个属性组成 32 张牌库；入座后随机取 2 属性 × 4 张 = 8 张；场上最多 3 张。</p></div>
         <div><b>落子</b><p>每回合 1 张。牌属性与席同五行 +2 攻/+4 血；席生牌 +4 血；席克牌 -2 攻；家庭物象与席同五行 +2 攻/+4 血。移动不触发这些。</p></div>
         <div><b>行动</b><p>场上每张牌每回合可攻击一次、获得一件装备、或移动到相邻空位，三选一。新落的牌当回合不能行动，但可以被攻击。</p></div>
         <div><b>攻击</b><p>空手/近战/盾牌打邻位，远程和长枪打距离 2。相生正常；克制方对被克方伤害 +1。无反击。</p></div>
@@ -345,10 +345,21 @@
       } else if (metaMsg) {
         metaHtml += `<div class="metamsg">${metaMsg}</div>`;
       } else if (!win && !S.metaSettled) {
-        metaHtml += `<div class="metachoice"><div>败者结算：失一魂，或失两魄；三魂至少留其一。</div><div class="metabtns">
-          <button data-loss="hun" ${aliveH.length <= 1 ? 'disabled' : ''}>失一魂</button>
-          <button data-loss="pos" ${aliveP.length < 2 ? 'disabled' : ''}>失两魄</button>
-        </div></div>`;
+        if (!S.lossChoice) {
+          metaHtml += `<div class="metachoice"><div>败者结算：失一魂，或失两魄；三魂至少留其一。选中后自己决定失去哪一个。</div><div class="metabtns">
+            <button data-loss="hun" ${aliveH.length <= 1 ? 'disabled' : ''}>失一魂</button>
+            <button data-loss="pos" ${aliveP.length < 2 ? 'disabled' : ''}>失两魄</button>
+          </div></div>`;
+        } else if (S.lossChoice.kind === 'hun') {
+          metaHtml += `<div class="metachoice"><div>选择要失去的一魂（至少保留一魂）：</div>
+            <div class="losslist">${aliveH.map(k => `<button data-pick-soul="${k}">${soulNames[k]}</button>`).join('')}</div>
+            <button class="lossback" data-loss-back>返回</button></div>`;
+        } else {
+          const picks = S.lossChoice.picks || [];
+          metaHtml += `<div class="metachoice"><div>选择要失去的两魄（已选 ${picks.length}/2）：</div>
+            <div class="losslist">${aliveP.map(k => `<button class="${picks.includes(k) ? 'sel' : ''}" data-pick-pos="${k}" ${!picks.includes(k) && picks.length >= 2 ? 'disabled' : ''}>${posNames[k]}</button>`).join('')}</div>
+            <div class="metabtns"><button data-loss-back>返回</button><button data-confirm-loss ${picks.length === 2 ? '' : 'disabled'}>确认失两魄</button></div></div>`;
+        }
       } else if (win && g.character === 'pangmen' && E.ownUnits(g, HUMAN).length === 3) {
         const lostReal = Object.keys(run.pos).filter(k => run.pos[k].lost && !run.pos[k].pseudo);
         metaHtml += `<div class="metachoice"><div>夺魄：胜利时场上仍有 3 张，可选一个已空缺的魄位炼为伪魄。</div>${lostReal.length
@@ -390,27 +401,41 @@
     if (!silent) document.dispatchEvent(new CustomEvent('bagua:result', { detail: { win, g } }));
     el.querySelectorAll('[data-loss]').forEach(b => b.onclick = () => {
       if (!meta) return;
-      const kind = b.dataset.loss;
-      if (kind === 'hun') {
-        const keys = meta.aliveHuns();
-        if (keys.length <= 1) return;
-        const k = keys[Math.floor(Math.random() * keys.length)];
-        meta.loseHun(k);
-        S.metaSettled = true;
-        showResult(true, `你失去了${soulNames[k]}。`);
-      } else {
-        const keys = meta.alivePos();
-        if (keys.length < 2) return;
-        const pool = keys.slice();
-        const lost = [];
-        for (let i = 0; i < 2; i++) {
-          const idx = Math.floor(Math.random() * pool.length);
-          lost.push(pool.splice(idx, 1)[0]);
-        }
-        lost.forEach(k => meta.losePos(k));
-        S.metaSettled = true;
-        showResult(true, `你失去了${lost.map(k => posNames[k]).join('、')}。`);
-      }
+      S.lossChoice = { kind: b.dataset.loss, picks: [] };
+      showResult(true);
+    });
+    el.querySelectorAll('[data-pick-soul]').forEach(b => b.onclick = () => {
+      if (!meta) return;
+      const k = b.dataset.pickSoul;
+      if (meta.aliveHuns().length <= 1) return;
+      meta.loseHun(k);
+      S.metaSettled = true;
+      S.lossChoice = null;
+      showResult(true, `你失去了${soulNames[k]}。`);
+    });
+    el.querySelectorAll('[data-pick-pos]').forEach(b => b.onclick = () => {
+      if (!meta || !S.lossChoice || S.lossChoice.kind !== 'pos') return;
+      const k = b.dataset.pickPos;
+      const picks = S.lossChoice.picks || [];
+      const idx = picks.indexOf(k);
+      if (idx >= 0) picks.splice(idx, 1);
+      else if (picks.length < 2) picks.push(k);
+      S.lossChoice.picks = picks;
+      showResult(true);
+    });
+    el.querySelectorAll('[data-loss-back]').forEach(b => b.onclick = () => {
+      S.lossChoice = null;
+      showResult(true);
+    });
+    el.querySelectorAll('[data-confirm-loss]').forEach(b => b.onclick = () => {
+      if (!meta || !S.lossChoice || S.lossChoice.kind !== 'pos') return;
+      const picks = S.lossChoice.picks || [];
+      if (picks.length !== 2) return;
+      picks.forEach(k => meta.losePos(k));
+      S.metaSettled = true;
+      const lost = picks.slice();
+      S.lossChoice = null;
+      showResult(true, `你失去了${lost.map(k => posNames[k]).join('、')}。`);
     });
     el.querySelectorAll('[data-seize]').forEach(b => b.onclick = () => {
       if (!meta) return;
@@ -437,7 +462,7 @@
     if (next) next.onclick = () => {
       el.classList.remove('show');
       if (meta) meta.startNextRound();
-      showPrep();
+      startGame();
     };
     const reset = $('btnResetMeta');
     if (reset) reset.onclick = () => {
@@ -458,19 +483,14 @@
     const mods = window.Meta ? window.Meta.gameMods() : {};
     const run = window.Meta ? window.Meta.get().run : null;
     const lostHuns = run ? Object.keys(run.souls).filter(k => run.souls[k].lost && !run.souls[k].pseudo) : [];
-    const prep = S.prep;
-    if (window.Meta && prep) {
-      window.Meta.get().run.lastAttrs = prep.attrs.slice();
+    S.g = E.newGame({ difficulty: S.difficulty, character: S.character, mods, lostHuns });
+    if (window.Meta) {
+      window.Meta.get().run.lastAttrs = S.g.players[0].attrs.slice();
       window.Meta.save();
     }
-    S.g = E.newGame({
-      difficulty: S.difficulty, character: S.character, mods, lostHuns,
-      p0Attrs: prep ? prep.attrs : undefined,
-      p0Cards: prep ? prep.cards.slice() : undefined,
-    });
     S.prep = null;
     $('screens').classList.remove('show');
-    S.sel = null; S.mode = null; S.extra = null; S.preview = null; S.pending = null; S.charChoice = null; S.metaSettled = false;
+    S.sel = null; S.mode = null; S.extra = null; S.preview = null; S.pending = null; S.charChoice = null; S.metaSettled = false; S.lossChoice = null;
     S.lastTerm = ''; S.lastRound = 0;
     updateTerm(true);
     renderAll();
@@ -956,6 +976,11 @@
     el.textContent = text + (kill ? ' · 击杀' : '');
     el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
   }
+  function announceSkill(r, fallbackKey) {
+    if (!r || !r.note) return;
+    const name = r.skill || (D.SKILL_BY_KEY[fallbackKey] || {}).name || '技能';
+    showCombo(`${name} · ${r.note}`, false);
+  }
   function shakeArena() {
     const el = document.querySelector('.arena');
     if (!el) return;
@@ -968,7 +993,7 @@
     const b = document.querySelector('.boardwrap');
     if (!b) return;
     const r = b.getBoundingClientRect();
-    if (r.top < 64 || r.bottom > innerHeight - 70) b.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (r.top < 64 || r.bottom > innerHeight - 70) b.scrollIntoView({ behavior: 'auto', block: 'center' });
   }
 
   function onCard(cid, mine) {
@@ -994,6 +1019,7 @@
     if (S.mode === 'cheng' && S.extra && S.extra.slot) {
       const r = E.useSkill(S.g, HUMAN, S.sel.key, S.extra.slot, wk);
       if (!r.ok) { flashMsg(r.msg); return; }
+      announceSkill(r, S.sel.key);
       clearSel(); refresh(); checkOver(); return;
     }
     if (S.sel && S.sel.type === 'weapon' && S.sel.key === wk) { clearSel(); renderAll(); return; }
@@ -1072,7 +1098,9 @@
       }
     }
     if (S.mode === 'skill' && S.sel && S.sel.type === 'skill') {
-      if (u && u.owner === HUMAN && E.skillTargets(g, HUMAN).includes(key)) {
+      if (!u || u.owner !== HUMAN) { flashMsg('技能要选择己方场上角色'); return; }
+      if (!E.skillTargets(g, HUMAN).includes(key)) { flashMsg(u.skillBan > 0 ? '该角色技能被封' : '该角色当前不能成为技能目标'); return; }
+      {
         const sk = S.sel.key;
         const matches = E.skillMatches(u, D.SKILL_BY_KEY[sk]);
         if (sk === 'zhi') {
@@ -1090,14 +1118,14 @@
         }
         const r = E.useSkill(g, HUMAN, sk, key, null);
         if (!r.ok) { flashMsg(r.msg); return; }
-        clearSel(); refresh(); checkOver(); return;
+        clearSel(); refresh(); announceSkill(r, sk); checkOver(); return;
       }
     }
     if (S.mode === 'zhi' && S.extra) {
       if (u && u.owner !== HUMAN && E.rangeEnemies(g, S.extra.slot).includes(key)) {
         const r = E.useSkill(g, HUMAN, S.sel.key, S.extra.slot, key);
         if (!r.ok) { flashMsg(r.msg); return; }
-        clearSel(); refresh(); checkOver(); return;
+        clearSel(); refresh(); announceSkill(r, S.sel && S.sel.key); checkOver(); return;
       }
     }
     if (S.mode === 'dong' && S.extra) {
@@ -1105,7 +1133,7 @@
       if (a && a.owner === HUMAN && E.adjacent(S.extra.slot).includes(key)) {
         const r = E.useSkill(g, HUMAN, S.sel.key, S.extra.slot, key);
         if (!r.ok) { flashMsg(r.msg); return; }
-        clearSel(); refresh(); checkOver(); return;
+        clearSel(); refresh(); announceSkill(r, S.sel && S.sel.key); checkOver(); return;
       }
     }
     if (u) {

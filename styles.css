@@ -279,6 +279,11 @@ button.primary:hover { background: var(--fire); border-color: var(--fire); color
 .metabtns { display: flex; gap: 6px; margin-top: 6px; }
 .metabtns button { font-size: 9px; padding: 4px 8px; }
 .metabtns button:disabled { opacity: .4; cursor: not-allowed; }
+.losslist { display: flex; flex-wrap: wrap; gap: 5px; margin: 7px 0; }
+.losslist button { padding: 4px 8px; background: #171C1E; border: 1px solid #3C4447; color: var(--paper0); font-size: 9px; }
+.losslist button.sel { border-color: var(--metal); box-shadow: 0 0 0 1px var(--metal); background: #232A2D; }
+.losslist button:disabled { opacity: .35; cursor: not-allowed; }
+.lossback { margin-top: 2px; padding: 3px 7px; font-size: 8px; }
 .sacbox { margin-top: 8px; font-size: 8px; }
 .sacattrs { flex-wrap: wrap; }
 .sacattrs button { font-size: 8px; padding: 3px 6px; }

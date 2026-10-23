@@ -489,7 +489,6 @@
     if ((p.skillUses[key] || 0) >= 2) return { ok: false, msg: '这张技能整局已用完' };
     const u = unitAt(g, slotKey);
     if (!u || u.owner !== pid) return { ok: false, msg: '技能要放在自己的单位上' };
-    if (u.justPlayed) return { ok: false, msg: '刚落下的牌本回合不能使用技能' };
     if (u.skillBan > 0) return { ok: false, msg: '该单位技能被封' };
     if (key === 'zhi') {
       const e = unitAt(g, extra);
@@ -521,12 +520,16 @@
       const a = 4 + 2 * m;
       u.atk += a; note = `+${a} 攻`;
     } else if (key === 'guangming') {
-      const heal = x => { x.hp = Math.min(x.maxHp, x.hp + 4); };
+      const targets = [u];
+      for (const k of adjacent(slotKey)) { const a = unitAt(g, k); if (a && a.owner === pid) targets.push(a); }
+      if (targets.every(x => x.hp >= x.maxHp)) return { ok: false, msg: '目标及邻位都已满血，光明无处可照' };
+      let healed = 0;
+      const heal = x => { const before = x.hp; x.hp = Math.min(x.maxHp, x.hp + 4); healed += x.hp - before; };
       heal(u);
       for (const k of adjacent(slotKey)) { const a = unitAt(g, k); if (a && a.owner === pid) heal(a); }
       if (m >= 1) heal(u);
       if (m === 2) { heal(u); for (const k of adjacent(slotKey)) { const a = unitAt(g, k); if (a && a.owner === pid) heal(a); } }
-      note = m === 2 ? '自身与邻位 +12 血' : m === 1 ? '自身 +8、邻位 +4 血' : '自身与邻位 +4 血';
+      note = `实际回复 ${healed} 血（匹配 ${m}/2）`;
     } else if (key === 'dong') {
       const add = 1 + (m >= 1 ? 1 : 0);
       u.extraActions += add;
@@ -582,7 +585,7 @@
     log(g, pid, 'skill', `${p.name} 对「${u.card.name}」施「${sk.name}」（匹配 ${m}/2）：${note}`);
     if (u.hp <= 0) killUnit(g, u, '技能');
     checkEnd(g);
-    return { ok: true, m };
+    return { ok: true, m, note, skill: sk.name };
   }
 
   function endTurn(g) {
@@ -763,7 +766,7 @@
     return RING.filter(k => { const t = unitAt(g, k); return t && t.owner !== u.owner && ringDist(slotKey, k) <= u.range; });
   }
   function skillTargets(g, pid) {
-    return ownUnits(g, pid).filter(k => { const u = unitAt(g, k); return !u.justPlayed && u.skillBan <= 0; });
+    return ownUnits(g, pid).filter(k => { const u = unitAt(g, k); return u.skillBan <= 0; });
   }
 
   window.Engine = {

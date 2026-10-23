@@ -1291,6 +1291,10 @@ body.pixelbody { -webkit-font-smoothing: none; text-rendering: geometricPrecisio
 #app.mobile.pixel .screens .metaline b { color: var(--px-gold); }
 #app.mobile.pixel .screens .metaline span { color: var(--px-paper2); }
 #app.mobile.pixel .screens .metachoice { border: 2px solid var(--px-stone2); background: #0b1011; color: var(--px-paper); }
+#app.mobile.pixel .screens .losslist button { background: var(--px-ink2); border: 2px solid var(--px-stone2); color: var(--px-paper); box-shadow: 2px 2px 0 #000; }
+#app.mobile.pixel .screens .losslist button.sel { border-color: var(--px-gold); box-shadow: 0 0 0 1px var(--px-gold), 2px 2px 0 #000; background: #1a2224; }
+#app.mobile.pixel .screens .losslist button:disabled { opacity: .35; }
+#app.mobile.pixel .screens .lossback { background: #101718; border: 2px solid var(--px-stone2); color: var(--px-paper2); font-size: 8px; }
 #app.mobile.pixel .screens .metabtns button { background: var(--px-ink2); border: 2px solid var(--px-stone2); color: var(--px-paper); box-shadow: 2px 2px 0 #000; }
 #app.mobile.pixel .screens .metabtns button:not(:disabled):hover { border-color: var(--px-gold); }
 #app.mobile.pixel .screens .metamsg { border-left: 3px solid var(--px-gold); background: #0b1011; color: var(--px-paper); }
