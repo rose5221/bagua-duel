@@ -590,3 +590,187 @@ button.primary:hover { background: var(--fire); border-color: var(--fire); color
 /* 新卡面结构：htop 只在像素/移动版显示 */
 .htile .htop { display: none; }
 .htile .hstats i { font-style: normal; }
+
+/* AI 步骤导演 + 技能播报 */
+.aiui { pointer-events: none; }
+.castbanner, .aibanner, .aitrack, .deathcard, .airecap { font-family: var(--mono); }
+.castbanner {
+  position: fixed; left: 50%; top: 102px; transform: translateX(-50%);
+  z-index: 60; padding: 5px 12px; display: none; pointer-events: none;
+  background: rgba(8,12,13,.92); color: var(--paper0);
+  border: 1px solid var(--metal); box-shadow: 0 0 18px rgba(194,162,76,.25);
+  font-size: 11px; letter-spacing: .08em; white-space: nowrap;
+}
+.castbanner.show { display: block; animation: castIn 1.5s ease-out forwards; }
+.castbanner.skill { border-color: var(--water); color: #cfe5e7; }
+.castbanner.weapon { border-color: var(--metal); color: #f0d994; }
+@keyframes castIn {
+  0% { opacity: 0; transform: translate(-50%, -6px); }
+  12%, 72% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -4px); }
+}
+.aibanner {
+  position: fixed; left: 50%; top: 58px; transform: translateX(-50%);
+  z-index: 59; display: none; align-items: center; gap: 9px; pointer-events: none;
+  padding: 5px 9px; background: rgba(8,12,13,.92); border: 1px solid #6f9ca3;
+  color: var(--paper0); font-size: 10px; white-space: nowrap;
+  box-shadow: 0 0 16px rgba(111,156,163,.2);
+}
+.aibanner.show { display: flex; }
+.aibanner button {
+  pointer-events: auto; font-size: 8px; padding: 2px 6px;
+  background: #1b2426; border: 1px solid var(--metal); color: var(--paper1);
+}
+.aitrack {
+  position: fixed; left: 50%; top: 88px; transform: translateX(-50%);
+  z-index: 58; display: none; max-width: min(92vw, 620px); overflow-x: auto;
+  gap: 4px; align-items: center; pointer-events: none; white-space: nowrap;
+  padding: 3px 5px; background: rgba(7,10,11,.72);
+}
+.aitrack.show { display: flex; }
+.aitrack b { color: var(--metal); font-size: 8px; font-weight: 500; }
+.aitrack span { font-size: 7px; color: var(--ink3); border-left: 1px solid var(--line); padding-left: 4px; }
+.aitrack span.cur { color: var(--paper0); }
+.deathcard {
+  position: fixed; left: 50%; top: 33%; transform: translate(-50%, -50%);
+  z-index: 65; display: none; min-width: 210px; max-width: 78vw; pointer-events: none;
+  padding: 7px 10px; background: rgba(12,8,8,.95); border: 1px solid var(--fire);
+  color: var(--paper0); font-size: 9px; line-height: 1.5; text-align: left;
+  box-shadow: 0 0 24px rgba(180,71,47,.3);
+}
+.deathcard.show { display: block; animation: deathIn 1.8s ease-out forwards; }
+.deathcard b { display: block; color: #ff9c8a; font-size: 12px; margin-bottom: 2px; }
+.deathcard span { display: block; color: var(--paper1); font-size: 8px; }
+.deathcard div { color: var(--ink4); font-size: 8px; }
+.deathcard small { display: block; color: var(--ink3); font-size: 7px; margin-top: 3px; }
+@keyframes deathIn {
+  0% { opacity: 0; transform: translate(-50%, -45%) scale(.94); }
+  10%, 78% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -55%) scale(1); }
+}
+.airecap {
+  position: fixed; left: 50%; top: 16%; transform: translateX(-50%);
+  z-index: 66; display: none; width: min(86vw, 420px); pointer-events: auto;
+  padding: 9px 11px; background: rgba(9,13,14,.97); border: 1px solid var(--metal);
+  color: var(--paper1); font-size: 9px; line-height: 1.6;
+  box-shadow: 0 8px 30px rgba(0,0,0,.6);
+}
+.airecap.show { display: block; }
+.airecap b { display: block; color: var(--metal); font-size: 10px; margin-bottom: 4px; }
+.airecap ol { margin: 0; padding-left: 18px; }
+.airecap li { color: var(--paper1); }
+.airecap .recapdeath { margin-top: 5px; border-top: 1px solid var(--line); padding-top: 4px; color: #ff9c8a; }
+.airecap .recapdeath span { display: block; font-size: 8px; }
+.airecap button { margin-top: 6px; float: right; font-size: 8px; padding: 2px 6px; }
+.pxpulse {
+  position: fixed; z-index: 62; pointer-events: none;
+  border: 2px solid var(--metal);
+  box-shadow: 0 0 18px rgba(194,162,76,.5), inset 0 0 14px rgba(111,156,163,.35);
+  animation: pxpulseFade .85s ease-out forwards;
+}
+.pxpulse.weapon { border-color: #f0d994; }
+.pxpulse i {
+  position: absolute; left: 50%; top: 50%; width: 4px; height: 4px;
+  background: var(--c); box-shadow: 0 0 4px var(--c);
+  animation: pxpart .75s ease-out forwards; animation-delay: var(--dl);
+}
+@keyframes pxpulseFade { 0% { opacity: 0; transform: scale(.7); } 20% { opacity: 1; transform: scale(1.04); } 100% { opacity: 0; transform: scale(1.16); } }
+@keyframes pxpart { to { transform: translate(var(--dx), var(--dy)) scale(.25); opacity: 0; } }
+.slot.ai-source { outline: 2px solid var(--water); outline-offset: 2px; }
+.slot.ai-target { outline: 2px solid var(--fire); outline-offset: 2px; }
+.screens.show ~ .aiui { display: none !important; }
+
+/* 天时 · 福缘开囊 */
+.blessingpanel { width: min(980px, 100%); max-height: 94vh; overflow: auto; }
+.blessingpanel h2 { margin: 3px 0 6px; font-size: 24px; font-weight: 500; }
+.blesslead { margin: 0 0 10px; color: var(--ink2); font-size: 9px; }
+.pouchrow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.pouch {
+  position: relative; min-height: 232px; padding: 16px 9px 10px; text-align: left;
+  background: linear-gradient(145deg, #a5352e, #6e1f20 60%, #3b1417);
+  border: 2px solid #d5a953; box-shadow: inset 0 0 0 1px #2b1112, 3px 3px 0 #000;
+  color: #f8ead0; display: flex; flex-direction: column; gap: 3px; cursor: pointer;
+  clip-path: polygon(8% 0, 92% 0, 100% 10%, 100% 86%, 50% 100%, 0 86%, 0 10%);
+}
+.pouch:before {
+  content: ''; position: absolute; left: 20%; right: 20%; top: 39px; height: 84px;
+  border: 1px solid rgba(255,224,150,.35); border-radius: 44% 44% 38% 38%;
+  pointer-events: none;
+}
+.pouch:after {
+  content: ''; position: absolute; left: 50%; top: 6px; width: 2px; height: 16px;
+  background: #e0bb61; box-shadow: 0 0 4px #f5d989;
+}
+.pouchcord { position: absolute; left: 32%; right: 32%; top: 22px; height: 5px; border: 1px solid #efd486; }
+.pouchseal { position: absolute; right: 7px; top: 8px; font-size: 8px; color: #f2d58e; }
+.pouchname { position: relative; z-index: 2; margin-top: 84px; font-size: 16px; color: #fff1ce; font-weight: 500; }
+.pouchterm { font-size: 8px; color: #e5c77f; }
+.pouchtext { position: relative; z-index: 2; margin-top: 3px; font-size: 9px; line-height: 1.45; color: #f4dfbd; }
+.pouch.trick { background: linear-gradient(145deg, #681c20, #251315 55%, #100b0c); border-color: #e6c46b; }
+.pouch.trick .pouchcord { border-style: double; }
+.pouch.trick .pouchseal { color: #ff9c8a; }
+.trickmark { position: absolute; left: 25%; top: 34%; z-index: 3; display: grid; place-items: center; width: 34px; height: 34px; border: 2px solid #e6c46b; color: #f4d889; font-style: normal; font-size: 18px; transform: rotate(-12deg); }
+.pouch.picked { border-color: #fff0ae; box-shadow: 0 0 0 2px #f0cc6e, 0 0 28px rgba(240,204,110,.5); transform: translateY(-5px) scale(1.02); transition: .25s; }
+.pouch.dim { opacity: .35; }
+.blessfoot { margin-top: 10px; font-size: 8px; color: var(--ink3); text-align: right; }
+.blessbar { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-bottom: 3px; padding: 3px 4px; background: #151b1d; border-left: 2px solid var(--metal); }
+.blessbar > span { font-size: 8px; color: var(--ink4); }
+.blessbar > b { font-size: 10px; color: var(--paper0); font-weight: 500; }
+.blessbar > b.trick { color: #ff9c8a; }
+.foebless { font-size: 8px; color: var(--ink4); margin-bottom: 3px; padding-left: 4px; }
+.trickbtn { font-size: 8px; padding: 2px 5px; margin-left: auto; color: var(--metal); border-color: var(--metal); background: #1b2325; }
+@media (max-width: 600px) {
+  .pouchrow { grid-template-columns: 1fr; }
+  .pouch { min-height: 150px; clip-path: polygon(5% 0,95% 0,100% 8%,100% 92%,50% 100%,0 92%,0 8%); }
+  .pouch:before { height: 40px; top: 25px; }
+  .pouchname { margin-top: 35px; font-size: 15px; }
+  .pouchtext { font-size: 9px; }
+  .trickmark { left: auto; right: 12px; top: 45px; }
+}
+
+/* 剧情关卡 */
+.levelhead { font-size: 8px; letter-spacing: .22em; color: var(--fire); margin: 10px 0 5px; }
+.levelpick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; margin-bottom: 7px; }
+.levelbtn { position: relative; text-align: left; padding: 6px 7px; background: #171C1E; border: 1px solid #3C4447; display: flex; flex-direction: column; gap: 2px; min-height: 48px; }
+.levelbtn b { font-size: 9px; color: var(--metal); font-weight: 500; }
+.levelbtn span { font-size: 9px; color: var(--paper0); }
+.levelbtn i { font-size: 7px; font-style: normal; color: var(--ink4); }
+.levelbtn.sel { border-color: var(--paper0); box-shadow: 0 0 0 1px var(--paper0); background: #232A2D; }
+.levelbtn.cleared i { color: var(--wood); }
+.levelbtn:disabled { opacity: .35; cursor: not-allowed; }
+.leveldesc { display: flex; align-items: center; gap: 9px; border: 1px solid var(--line); padding: 7px; margin-bottom: 10px; background: #111617; }
+.leveldesc > div { display: flex; flex-direction: column; gap: 2px; }
+.leveldesc > div b { font-size: 11px; color: var(--paper0); font-weight: 500; }
+.leveldesc > div span { font-size: 8px; color: var(--ink4); line-height: 1.45; }
+.leveldesc > div em { font-size: 8px; color: var(--metal); font-style: normal; }
+.leveldesc .portrait { flex: 0 0 44px; border: 1px solid var(--metal); }
+.taijiboss { width: 44px; height: 44px; flex: 0 0 44px; display: grid; place-items: center; font-size: 28px; color: var(--paper0); border: 1px solid var(--metal); background: #17191B; }
+.levelbadge { font-size: 8px; color: var(--metal); margin-bottom: 3px; padding-left: 4px; }
+.pausepanel { width: min(460px, 100%); }
+.pausepanel h2 { margin: 4px 0 8px; font-size: 22px; font-weight: 500; }
+.pausepanel .startbtns { justify-content: flex-start; flex-wrap: wrap; }
+
+/* 24 只节气锦囊的轮廓差异（同一红缎底，不同剪影） */
+.pouch.shape-gourd { clip-path: polygon(34% 0,66% 0,72% 8%,80% 24%,96% 40%,97% 80%,50% 100%,3% 80%,4% 40%,20% 24%,28% 8%); }
+.pouch.shape-umbrella { clip-path: polygon(50% 0,100% 18%,100% 88%,50% 100%,0 88%,0 18%); }
+.pouch.shape-bell { clip-path: polygon(28% 0,72% 0,78% 8%,72% 24%,88% 48%,92% 82%,50% 100%,8% 82%,12% 48%,28% 24%,22% 8%); }
+.pouch.shape-swallow { clip-path: polygon(50% 0,100% 18%,72% 45%,88% 100%,50% 72%,12% 100%,28% 45%,0 18%); }
+.pouch.shape-kite { clip-path: polygon(50% 0,96% 24%,100% 84%,50% 100%,0 84%,4% 24%); }
+.pouch.shape-leaf { clip-path: polygon(50% 0,96% 30%,86% 84%,50% 100%,14% 84%,4% 30%); }
+.pouch.shape-pomegranate { clip-path: polygon(50% 0,70% 8%,82% 24%,96% 48%,90% 80%,50% 100%,10% 80%,4% 48%,18% 24%,30% 8%); }
+.pouch.shape-wheat { clip-path: polygon(50% 0,70% 14%,62% 28%,90% 44%,72% 62%,84% 82%,50% 100%,16% 82%,28% 62%,10% 44%,38% 28%,30% 14%); }
+.pouch.shape-sickle { clip-path: polygon(18% 0,88% 0,100% 12%,92% 42%,58% 44%,28% 100%,0 72%,38% 24%,12% 12%); }
+.pouch.shape-sun { clip-path: polygon(50% 0,62% 12%,80% 4%,78% 24%,100% 26%,86% 44%,100% 62%,80% 64%,86% 88%,60% 80%,50% 100%,40% 80%,14% 88%,20% 64%,0 62%,14% 44%,0 26%,20% 24%,18% 4%,38% 12%); }
+.pouch.shape-cicada { clip-path: polygon(50% 0,88% 18%,98% 52%,70% 94%,50% 100%,30% 94%,2% 52%,12% 18%); }
+.pouch.shape-flame { clip-path: polygon(50% 0,78% 22%,92% 52%,78% 92%,50% 100%,22% 92%,8% 52%,22% 22%); }
+.pouch.shape-wutong { clip-path: polygon(50% 0,90% 18%,100% 44%,78% 72%,50% 100%,22% 72%,0 44%,10% 18%); }
+.pouch.shape-goose { clip-path: polygon(28% 0,54% 18%,100% 34%,62% 50%,84% 100%,44% 58%,0 78%,22% 40%); }
+.pouch.shape-blade { clip-path: polygon(8% 0,56% 0,100% 48%,76% 100%,30% 100%,0 44%); }
+.pouch.shape-scale { clip-path: polygon(50% 0,88% 30%,100% 54%,82% 86%,50% 100%,18% 86%,0 54%,12% 30%); }
+.pouch.shape-moon { clip-path: polygon(20% 0,80% 10%,100% 38%,84% 78%,40% 100%,0 76%,14% 44%); }
+.pouch.shape-frost { clip-path: polygon(50% 0,62% 28%,92% 18%,80% 48%,100% 62%,68% 70%,72% 100%,46% 82%,24% 100%,28% 70%,0 62%,20% 48%,8% 18%,38% 28%); }
+.pouch.shape-ice { clip-path: polygon(50% 0,76% 22%,100% 46%,82% 82%,50% 100%,18% 82%,0 46%,24% 22%); }
+.pouch.shape-snow { clip-path: polygon(50% 0,64% 26%,92% 12%,78% 42%,100% 56%,70% 66%,76% 96%,50% 76%,24% 96%,30% 66%,0 56%,22% 42%,8% 12%,36% 26%); }
+.pouch.shape-mountain { clip-path: polygon(8% 76%,34% 18%,48% 42%,66% 0,92% 50%,100% 88%,50% 100%,0 88%); }
+.pouch.shape-night { clip-path: polygon(50% 0,78% 16%,92% 46%,82% 84%,50% 100%,18% 84%,8% 46%,22% 16%); }
+.pouch.shape-plum { clip-path: polygon(50% 0,72% 22%,100% 28%,86% 52%,100% 80%,64% 78%,50% 100%,36% 78%,0 80%,14% 52%,0 28%,28% 22%); }

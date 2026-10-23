@@ -72,8 +72,13 @@
     p0.weapons = weapons.slice(0, 4);
     p1.weapons = weapons.slice(4, 8);
     const g = {
-      humanSeat, difficulty, first, turn: first, turnNo: 0, round: 0, month: 1,
+      humanSeat, difficulty, first, turn: first, turnNo: 0,
+      round: Math.max(0, (opts.startMonth || 1) - 1), month: 1, season: opts.season || '',
+      levelName: opts.levelName || '', bossName: opts.bossName || '', levelIndex: opts.levelIndex || 0,
       character: D.CHARACTERS.some(c => c.key === opts.character) ? opts.character : 'daotong',
+      blessings: [opts.blessing || null, opts.foeBlessing || null],
+      blessState: [{ round: {}, game: {}, trick: false }, { round: {}, game: {}, trick: false }],
+      summoned: [], cooldowns: opts.cooldowns || {},
       charUsed: { sign: false, divine: false },
       charUsedGame: { avatar: false, clone: false, seize: false },
       charResult: null, summon: null, lostHuns: Array.isArray(opts.lostHuns) ? opts.lostHuns.slice() : [], pseudoPos: [], chierAttacks: 0,
@@ -167,6 +172,9 @@
       if (!u) continue;
       u.tempShield = 0;
       u.shield = u.shieldMax;
+      u.tempAtk = 0;
+      u.atkPenalty = 0;
+      u.blessMoved = false;
       u.fieldDmg = 0; u.fieldArmor = 0; u.fieldVuln = 0; u.fieldBurnOnHit = false;
       if (u.burn > 0) {
         u.burn--;
@@ -177,6 +185,7 @@
       applyField(g, u);
       u.shield = u.shieldMax + u.tempShield;
     }
+    if (!g.over) blessRoundStart(g);
     if (g.mods && g.mods.poisonEvery2 && g.round % 2 === 0) {
       for (const k of RING) {
         const u = unitAt(g, k);
@@ -246,6 +255,7 @@
     p.cardState[cardId] = 'board';
     g.placedThisTurn = true;
     log(g, pid, 'place', `${p.name} 在「${slot.name}」落「${card.name}」（${u.atk}/${u.hp}）${card.element === slot.element ? ' · 同宫 +2/+4' : ''}${card.roleElement === slot.element ? ' · 物象同宫 +2/+4' : ''}${ELEMENTS[slot.element].gen === card.element ? ' · 席生牌 +4 血' : ''}${ELEMENTS[slot.element].over === card.element ? ' · 席克牌 -2 攻' : ''}`);
+    blessOnPlace(g, pid, u);
     return { ok: true, unit: u };
   }
 
@@ -307,11 +317,13 @@
     if (u.guard === 'firm') return { ok: false, msg: '坚守中不能移动，需先解除' };
     if (!adjacent(fromKey).includes(toKey)) return { ok: false, msg: '只能移动到邻位' };
     if (g.board[toKey]) return { ok: false, msg: '目标卦位已有牌' };
-    spendUnitAction(u);
+    const free = blessFreeMove(g, pid);
+    if (!free) spendUnitAction(u);
     g.board[fromKey] = null;
     g.board[toKey] = { unit: u };
     u.slot = toKey;
-    log(g, pid, 'move', `${g.players[pid].name} 的「${u.card.name}」移动到「${TRIGRAMS[toKey].name}」`);
+    log(g, pid, 'move', `${g.players[pid].name} 的「${u.card.name}」移动到「${TRIGRAMS[toKey].name}」${free ? '（剪春：不消耗行动）' : ''}`);
+    blessAfterMove(g, pid, u);
     return { ok: true };
   }
 
@@ -406,14 +418,15 @@
     }
     const over = ELEMENTS[a.card.element].over === t.card.element;
     const metaBonus = (pid === HUMAN && g.mods && g.mods.damageDealt) || 0;
-    let dmg = Math.max(0, a.atk + (a.fieldDmg || 0) + (over ? 1 : 0)) + chierBonus + metaBonus;
+    const bm = blessAttackMod(g, pid, a, t);
+    let dmg = Math.max(0, a.atk + (a.tempAtk || 0) - (a.atkPenalty || 0) + (a.fieldDmg || 0) + (over ? 1 : 0)) + chierBonus + metaBonus + bm.bonus;
     const mult = a.mult || 1;
     dmg *= mult;
     if (a.multUses > 0) { a.multUses--; if (a.multUses === 0) a.mult = 1; }
-    const absorbed = Math.min(t.shield, dmg);
-    t.shield -= absorbed;
-    dmg -= absorbed;
+    let absorbed = 0;
+    if (!bm.ignoreShield) { absorbed = Math.min(t.shield, dmg); t.shield -= absorbed; dmg -= absorbed; }
     dmg = Math.max(0, dmg - (t.fieldArmor || 0) + (t.fieldVuln || 0));
+    if (bm.reduce) dmg = Math.max(0, dmg - bm.reduce);
     let halved = 0;
     if (t.guard) {
       const before = dmg;
@@ -434,7 +447,12 @@
     const metaReduce = (t.owner === HUMAN && g.mods && g.mods.damageTaken) || 0;
     if (metaReduce) dmg = Math.max(0, dmg - metaReduce);
     t.hp -= dmg;
-    log(g, pid, 'attack', `${g.players[pid].name} 的「${a.card.name}」→「${t.card.name}」：${a.atk}${a.fieldDmg ? (a.fieldDmg > 0 ? '+1' : '-1') : ''}${over ? '+克1' : ''}${chierBonus ? '+痴2' : ''}${metaBonus ? (metaBonus > 0 ? '+' : '') + metaBonus : ''}${mult > 1 ? '×' + mult : ''}，盾挡 ${absorbed}${halved ? `，防御减半 -${halved}` : ''}${chierReduce ? `，痴相 -${chierReduce}` : ''}${immune ? '，免疫' : ''}，实伤 ${dmg}（${Math.max(0, t.hp)}/${t.maxHp}）`);
+    log(g, pid, 'attack', `${g.players[pid].name} 的「${a.card.name}」→「${t.card.name}」：${a.atk}${a.fieldDmg ? (a.fieldDmg > 0 ? '+1' : '-1') : ''}${over ? '+克1' : ''}${chierBonus ? '+痴2' : ''}${metaBonus ? (metaBonus > 0 ? '+' : '') + metaBonus : ''}${bm.bonus ? '+福' + bm.bonus : ''}${mult > 1 ? '×' + mult : ''}，盾挡 ${absorbed}${halved ? `，防御减半 -${halved}` : ''}${chierReduce ? `，痴相 -${chierReduce}` : ''}${immune ? '，免疫' : ''}，实伤 ${dmg}（${Math.max(0, t.hp)}/${t.maxHp}）${bm.note ? ' · ' + bm.note.trim() : ''}`);
+    if (!immune && t.hp > 0 && bm.extraTrue) {
+      t.hp -= bm.extraTrue;
+      log(g, pid, 'term', `福缘·蝉鸣：${t.card.name} 追加 ${bm.extraTrue} 真实伤害（${Math.max(0, t.hp)}/${t.maxHp}）`);
+    }
+    blessAfterAttack(g, pid, a, t);
     const extraChance = (a.summon && a.summon.type === 'avatar' && a.summon.key === 'di' ? .3 : 0)
       + (pid === HUMAN && g.mods ? (g.mods.extraAttackChance || 0) : 0);
     if (!immune && t.hp > 0 && extraChance && Math.random() < extraChance) {
@@ -451,13 +469,16 @@
       const w = a.weapon; removeWeapon(a, w);
       log(g, pid, 'equip', `「${a.card.name}」的长枪在攻击后销毁`);
     }
-    if (t.hp <= 0) killUnit(g, t, '战斗');
+    const wasKilled = t.hp <= 0;
+    if (wasKilled) killUnit(g, t, '战斗');
+    if (wasKilled && t.dead) blessAfterKill(g, pid, a, t);
     checkEnd(g);
     return { ok: true, damage: dmg };
   }
 
   function killUnit(g, u, cause) {
     if (!u || u.dead) return;
+    if (blessBeforeDeath(g, u)) return;
     u.dead = true;
     const p = g.players[u.owner];
     if (g.board[u.slot] && g.board[u.slot].unit === u) g.board[u.slot] = null;
@@ -527,14 +548,14 @@
     } else if (key === 'guangming') {
       const targets = [u];
       for (const k of adjacent(slotKey)) { const a = unitAt(g, k); if (a && a.owner === pid) targets.push(a); }
-      if (targets.every(x => x.hp >= x.maxHp)) return { ok: false, msg: '目标及邻位都已满血，光明无处可照' };
       let healed = 0;
-      const heal = x => { const before = x.hp; x.hp = Math.min(x.maxHp, x.hp + 4); healed += x.hp - before; };
+      // 光明始终生效：满血也可以加上限之外，形成临时灵光血
+      const heal = x => { const before = x.hp; x.hp += 4; healed += x.hp - before; };
       heal(u);
       for (const k of adjacent(slotKey)) { const a = unitAt(g, k); if (a && a.owner === pid) heal(a); }
       if (m >= 1) heal(u);
       if (m === 2) { heal(u); for (const k of adjacent(slotKey)) { const a = unitAt(g, k); if (a && a.owner === pid) heal(a); } }
-      note = `实际回复 ${healed} 血（匹配 ${m}/2）`;
+      note = `灵光 +${healed} 血（匹配 ${m}/2）`;
     } else if (key === 'dong') {
       const add = 1 + (m >= 1 ? 1 : 0);
       u.extraActions += add;
@@ -584,6 +605,7 @@
       }
       note = `换上「${nw.name}」${old ? '，旧装备回手' : ''}${m >= 1 ? '，保留旧攻/血' : ''}${m === 2 ? '，去掉新装备减益' : ''}`;
     }
+    blessAfterSkill(g, pid, u, m);
     p.skillUses[key] = (p.skillUses[key] || 0) + 1;
     g.skillsUsedThisTurn[key] = true;
     g.skillsLeft--;
@@ -692,6 +714,7 @@
     if (g.character !== 'qingfeng') return { ok: false, msg: '当前角色没有化身/分身' };
     if (type !== 'avatar' && type !== 'clone') return { ok: false, msg: '未知化身类型' };
     if (g.charUsedGame[type]) return { ok: false, msg: '本局已经用过' };
+    if (g.cooldowns && g.cooldowns[key] > 0) return { ok: false, msg: '这一魂/魄还在冷却中' };
     if (g.summon) return { ok: false, msg: '化身与分身不可同时在场' };
     const list = type === 'avatar' ? (D.HUNS || []) : (D.POS || []);
     const picked = list.find(x => x.key === key);
@@ -724,9 +747,226 @@
     };
     g.board[slot] = { unit: u };
     g.charUsedGame[type] = true;
+    if (!g.summoned.includes(key)) g.summoned.push(key);
     g.summon = { type, key, name, slot, unit: u };
     log(g, pid, 'skill', `清风道长以「${name}」入场（${u.atk}/${u.hp} · ${type === 'avatar' ? '不占 3 张上限' : '占 3 张上限'}）`);
     return { ok: true, unit: u, slot };
+  }
+
+  /* ---------- 天时 · 福缘 / 妙计 ---------- */
+  function blessDef(g, pid) { return (g && g.blessings && g.blessings[pid]) || null; }
+  function blessSt(g, pid) {
+    if (!g.blessState) g.blessState = [{ round: {}, game: {}, trick: false }, { round: {}, game: {}, trick: false }];
+    if (!g.blessState[pid]) g.blessState[pid] = { round: {}, game: {}, trick: false };
+    return g.blessState[pid];
+  }
+  function blessOnceRound(g, pid, key) {
+    const st = blessSt(g, pid);
+    if (st.round[key]) return false;
+    st.round[key] = true; return true;
+  }
+  function blessOnceGame(g, pid, key) {
+    const st = blessSt(g, pid);
+    if (st.game[key]) return false;
+    st.game[key] = true; return true;
+  }
+  function blessBehind(g, pid) {
+    const mine = ownUnits(g, pid).map(k => unitAt(g, k));
+    const foe = ownUnits(g, other(pid)).map(k => unitAt(g, k));
+    if (mine.length !== foe.length) return mine.length < foe.length;
+    const hp = list => list.reduce((s, u) => s + Math.max(0, u.hp), 0);
+    return hp(mine) < hp(foe);
+  }
+  function blessLog(g, pid, b, text) {
+    if (b) log(g, pid, 'term', `福缘·${b.name}：${text}`);
+  }
+  function blessRoundStart(g) {
+    for (const pid of [0, 1]) {
+      const b = blessDef(g, pid);
+      if (!b) continue;
+      const st = blessSt(g, pid);
+      st.round = {};
+      const mine = ownUnits(g, pid).map(k => unitAt(g, k));
+      const low = mine.slice().sort((a, c) => (a.hp / a.maxHp) - (c.hp / c.maxHp))[0];
+      if (b.key === 's_yushui' && low) {
+        low.hp = Math.min(low.maxHp, low.hp + 3);
+        if (low.hp < low.maxHp * .5) low.shield += 2;
+        blessLog(g, pid, b, `${low.card.name} 回复 3${low.hp < low.maxHp * .5 ? '，并获得 2 护盾' : ''}`);
+      } else if (b.key === 's_xiaoxue') {
+        for (const u of mine) u.shield += 1;
+        blessLog(g, pid, b, `己方全体获得 1 护盾`);
+      } else if (b.key === 's_xiaohan' && low) {
+        low.hp = Math.min(low.maxHp, low.hp + 2);
+        if (low.hp < low.maxHp * .3) low.shield += 3;
+        blessLog(g, pid, b, `${low.card.name} 回复 2${low.hp < low.maxHp * .3 ? '，并获得 3 护盾' : ''}`);
+      } else if (b.key === 's_dashu') {
+        const foes = ownUnits(g, other(pid)).map(k => unitAt(g, k));
+        const n = blessBehind(g, pid) ? 2 : 1;
+        for (const u of foes.slice(0, n)) { applyBurn(u); }
+        blessLog(g, pid, b, `${n} 名敌人被点燃`);
+      }
+    }
+  }
+  function blessOnPlace(g, pid, u) {
+    const b = blessDef(g, pid);
+    if (!b || !u) return;
+    if (b.key === 's_lichun' && blessOnceGame(g, pid, 's_lichun')) {
+      const behind = blessBehind(g, pid);
+      const a = behind ? 5 : 3, h = behind ? 9 : 6;
+      u.atk += a; u.maxHp += h; u.hp += h;
+      blessLog(g, pid, b, `${u.card.name} +${a} 攻/+${h} 血${behind ? '（逆境）' : ''}`);
+    } else if (b.key === 's_guyu' && blessOnceRound(g, pid, 's_guyu')) {
+      u.hp = Math.min(u.maxHp, u.hp + 4); u.shield += 1;
+      blessLog(g, pid, b, `${u.card.name} 回复 4 并获 1 护盾`);
+    } else if (b.key === 's_lidong' && blessOnceGame(g, pid, 's_lidong')) {
+      const n = blessBehind(g, pid) ? 8 : 5;
+      u.shield += n;
+      blessLog(g, pid, b, `${u.card.name} 获得 ${n} 护盾`);
+    }
+  }
+  function blessFreeMove(g, pid) {
+    const b = blessDef(g, pid);
+    return !!(b && b.key === 's_chunfen' && blessOnceRound(g, pid, 's_chunfen'));
+  }
+  function blessAfterMove(g, pid, u) {
+    u.blessMoved = true;
+    const foeBless = blessDef(g, other(pid));
+    if (foeBless && foeBless.key === 's_daxue' && blessOnceRound(g, other(pid), 's_daxue')) {
+      u.atkPenalty = (u.atkPenalty || 0) + 2;
+      blessLog(g, other(pid), foeBless, `${u.card.name} 移动后本回合攻击 -2`);
+    }
+  }
+  // 攻击前修正：返回额外伤害、无视护盾、减伤
+  function blessAttackMod(g, pid, a, t) {
+    const b = blessDef(g, pid), out = { bonus: 0, ignoreShield: false, reduce: 0, extraTrue: 0, note: '' };
+    if (b) {
+      if (b.key === 's_jingzhe' && blessOnceRound(g, pid, 's_jingzhe')) {
+        out.bonus += 2 + (t.hp >= t.maxHp ? 2 : 0); out.note += '惊雷 ';
+      } else if (b.key === 's_lixia' && blessOnceRound(g, pid, 's_lixia')) {
+        out.bonus += 2 + (ownUnits(g, other(pid)).length >= 2 ? 2 : 0); out.note += '榴火 ';
+      } else if (b.key === 's_xiaoman' && blessOnceRound(g, pid, 's_xiaoman')) {
+        out.bonus += blessBehind(g, pid) ? 3 : 2; out.note += '满仓 ';
+      } else if (b.key === 's_bailu' && blessOnceRound(g, pid, 's_bailu')) {
+        out.bonus += t.acted ? 1 : 3; out.note += '霜刃 ';
+      } else if (b.key === 's_liqiu' && blessOnceRound(g, pid, 's_liqiu')) {
+        out.ignoreShield = true; out.bonus += t.hp < t.maxHp * .5 ? 2 : 0; out.note += '一叶 ';
+      } else if (b.key === 's_qiufen' && blessOnceRound(g, pid, 's_qiufen') && blessBehind(g, pid)) {
+        out.bonus += 2; a.shield += 2; out.note += '秤星 ';
+      } else if (b.key === 's_dahan' && ownUnits(g, pid).length === 1) {
+        out.bonus += 4; out.note += '岁终 ';
+      } else if (b.key === 's_xiaoshu' && Math.random() < (ownUnits(g, other(pid)).length >= 3 ? .5 : .3)) {
+        out.extraTrue += 1; out.note += '蝉鸣 ';
+      }
+    }
+    const df = blessDef(g, other(pid));
+    if (df && df.key === 's_hanlu' && blessOnceRound(g, other(pid), 's_hanlu')) {
+      out.reduce += blessBehind(g, other(pid)) ? 4 : 2;
+      out.note += '冷月 ';
+    }
+    return out;
+  }
+  function blessAfterAttack(g, pid, a, t) {
+    const b = blessDef(g, pid);
+    if (b && b.key === 's_shuangjiang' && blessOnceRound(g, other(pid), 's_shuangjiang')) {
+      a.atkPenalty = (a.atkPenalty || 0) + 2;
+      blessLog(g, other(pid), b, `${a.card.name} 的下次攻击 -2`);
+    }
+  }
+  function blessAfterKill(g, pid, a, t) {
+    const b = blessDef(g, pid);
+    if (!b) return;
+    if (b.key === 's_mangzhong' && blessOnceRound(g, pid, 's_mangzhong')) {
+      for (const k of adjacent(t.slot)) {
+        const e = unitAt(g, k);
+        if (e && e.owner !== pid) {
+          e.hp -= 2;
+          log(g, pid, 'term', `福缘·连镰：${e.card.name} -2 血`);
+          if (e.hp <= 0) killUnit(g, e, '连镰');
+        }
+      }
+    } else if (b.key === 's_chushu' && blessOnceRound(g, pid, 's_chushu')) {
+      for (const k of ownUnits(g, pid)) { const u = unitAt(g, k); u.hp = Math.min(u.maxHp, u.hp + 2); }
+      blessLog(g, pid, b, '击杀后己方全体回复 2');
+    }
+  }
+  function blessAfterSkill(g, pid, u, m) {
+    const b = blessDef(g, pid);
+    if (b && b.key === 's_xiazhi' && blessOnceRound(g, pid, 's_xiazhi')) {
+      u.tempAtk = (u.tempAtk || 0) + (m === 2 ? 4 : 2);
+      blessLog(g, pid, b, `${u.card.name} 本回合 +${m === 2 ? 4 : 2} 攻`);
+    }
+  }
+  function blessBeforeDeath(g, u) {
+    const pid = u.owner, b = blessDef(g, pid);
+    if (!b) return false;
+    if (b.key === 's_qingming' && blessOnceGame(g, pid, 's_qingming')) {
+      const n = blessBehind(g, pid) ? 8 : 5;
+      for (const k of ownUnits(g, pid)) { const x = unitAt(g, k); x.hp = Math.min(x.maxHp, x.hp + n); }
+      blessLog(g, pid, b, `阵亡触发，己方全体回复 ${n}`);
+    } else if (b.key === 's_dongzhi' && blessOnceGame(g, pid, 's_dongzhi')) {
+      if (blessBehind(g, pid)) {
+        u.hp = 1; u.dead = false;
+        blessLog(g, pid, b, `${u.card.name} 以 1 血留在原席（逆境）`);
+        return true;
+      }
+      for (const k of ownUnits(g, pid)) { const x = unitAt(g, k); x.hp = Math.min(x.maxHp, x.hp + 4); }
+      blessLog(g, pid, b, `己方全体回复 4`);
+    } else if (b.kind === 'trick' && b.key === 't_winter' && !blessSt(g, pid).trick) {
+      blessSt(g, pid).trick = true;
+      const p = g.players[pid];
+      const slot = u.slot;
+      g.board[slot] = null;
+      if (p.cardState[u.cardId] === 'board') { p.cardState[u.cardId] = 'hand'; if (!p.hand.includes(u.cardId)) p.hand.push(u.cardId); }
+      const shell = Object.assign({}, u, {
+        hp: 1, maxHp: 1, atk: 0, weapon: null, weaponHp: 0, shield: 0, shieldMax: 0, tempShield: 0,
+        ranged: false, range: 1, acted: true, justPlayed: true, dead: false, shell: true,
+        card: Object.assign({}, u.card, { name: '空壳' }),
+      });
+      g.board[slot] = { unit: shell };
+      log(g, pid, 'term', `妙计·金蝉脱壳：${u.card.name} 以 1 血回手，原席留下空壳`);
+      return true;
+    }
+    return false;
+  }
+  function useTrick(g, pid, target1, target2) {
+    if (!g || g.over || g.turn !== pid) return { ok: false, msg: '不是你的回合' };
+    const b = blessDef(g, pid);
+    if (!b || b.kind !== 'trick' || b.key === 't_winter') return { ok: false, msg: '没有可主动使用的妙计' };
+    const st = blessSt(g, pid);
+    if (st.trick) return { ok: false, msg: '本季妙计已经用过' };
+    if (b.key === 't_spring') {
+      const u = unitAt(g, target1);
+      if (!u || u.owner === pid) return { ok: false, msg: '选择一名敌人' };
+      const empties = adjacent(u.slot).filter(k => !g.board[k]);
+      if (empties.length) {
+        g.board[u.slot] = null; u.slot = empties[0]; g.board[u.slot] = { unit: u };
+        log(g, pid, 'term', `妙计·借东风：${u.card.name} 被推到「${TRIGRAMS[u.slot].name}」`);
+      } else {
+        u.hp -= 2; log(g, pid, 'term', `妙计·借东风：${u.card.name} 无路可退，-2 血`);
+        if (u.hp <= 0) killUnit(g, u, '借东风');
+      }
+    } else if (b.key === 't_summer') {
+      const u = unitAt(g, target1);
+      if (!u || u.owner === pid || !u.burn) return { ok: false, msg: '选择一名已灼烧的敌人' };
+      const otherEnemy = ownUnits(g, other(pid)).map(k => unitAt(g, k)).find(x => x !== u);
+      if (otherEnemy) {
+        otherEnemy.burn = Math.max(otherEnemy.burn || 0, u.burn);
+        log(g, pid, 'term', `妙计·火中取栗：灼烧复制给 ${otherEnemy.card.name}`);
+      } else {
+        u.hp -= 2; log(g, pid, 'term', `妙计·火中取栗：${u.card.name} -2 血`);
+        if (u.hp <= 0) killUnit(g, u, '火中取栗');
+      }
+    } else if (b.key === 't_autumn') {
+      const a = unitAt(g, target1), c = unitAt(g, target2);
+      if (!a || !c || a === c) return { ok: false, msg: '选择两张不同的牌' };
+      const as = a.slot, cs = c.slot;
+      g.board[as] = { unit: c }; g.board[cs] = { unit: a };
+      a.slot = cs; c.slot = as;
+      log(g, pid, 'term', `妙计·移花接木：${a.card.name} 与 ${c.card.name} 交换卦位`);
+    }
+    st.trick = true;
+    checkEnd(g);
+    return { ok: true };
   }
 
   function checkEnd(g) {
@@ -777,7 +1017,7 @@
   window.Engine = {
     HUMAN, FOE, HAND, BOARD_MAX, WIN_DEAD, RING, CARDS, WEAPONS, SKILLS, TERMS,
     newGame, startTurn, startRound, endTurn, place, attack, equip, move, useSkill, forecast,
-    sign, divine, summon,
+    sign, divine, summon, useTrick,
     defend, defendValid, defendTargets, applyPoison,
     skillValid, skillMatches, placement, validSlots, attackTargets, moveTargets,
     equipTargets, skillTargets, rangeEnemies, ownUnits, unitAt, ringDist, adjacent, canUnitAct,

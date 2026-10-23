@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
-  <title>八卦对决 · 像素</title>
-  <link rel="stylesheet" href="styles.css?v=20261022r">
-  <link rel="stylesheet" href="mobile.css?v=20261022r">
-  <link rel="stylesheet" href="pixel.css?v=20261022r">
+  <title>八卦弈魂 · 像素</title>
+  <link rel="stylesheet" href="styles.css?v=20261023d">
+  <link rel="stylesheet" href="mobile.css?v=20261023d">
+  <link rel="stylesheet" href="pixel.css?v=20261023d">
 </head>
 <body class="pixelbody">
   <div id="app" class="mobile pixel">
     <header class="topbar">
-      <div class="brand">八卦对决 <span>PIXEL BAGUA</span></div>
+      <div class="brand">八卦弈魂 <span>PIXEL BAGUA</span></div>
       <div class="seatbar" id="seatbar"></div>
       <div class="status" id="status">未入座</div>
       <div class="topactions">
@@ -19,6 +19,7 @@
         <button id="btnSfx">音效</button>
         <button id="btnAccount">账号</button>
         <button id="btnRules">规则</button>
+        <button id="btnPause" title="菜单 / 暂停">菜单</button>
         <button id="btnEnd" disabled>结束</button>
       </div>
     </header>
@@ -115,8 +116,10 @@
     <source src="assets/audio/deploy-ambient.m4a" type="audio/mp4">
   </audio>
 
-  <script src="src/data.js?v=20261022r"></script>
-  <script src="src/meta.js?v=20261022r"></script>
+  <script src="src/data.js?v=20261023d"></script>
+  <script src="src/meta.js?v=20261023d"></script>
+  <script src="src/blessings.js?v=20261023d"></script>
+  <script src="src/campaign.js?v=20261023d"></script>
   <script src="src/weapon-skins.js"></script>
   <script>
     // 像素版使用单独的像素卡图，不改动原版资源
@@ -126,9 +129,9 @@
         data-cid="${card.id}" onerror="this.onerror=null;window.DATA.portraitFallback(this)">`;
     };
   </script>
-  <script src="src/engine.js?v=20261022r"></script>
-  <script src="src/ai.js"></script>
-  <script src="src/ui.js?v=20261022r"></script>
+  <script src="src/engine.js?v=20261023d"></script>
+  <script src="src/ai.js?v=20261023d"></script>
+  <script src="src/ui.js?v=20261023d"></script>
   <script src="src/pixel-sfx.js"></script>
   <script src="src/elixirs.js"></script>
   <script src="src/pixel-account.js"></script>

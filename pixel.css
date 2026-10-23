@@ -1479,3 +1479,121 @@ html body.px-sheet-open { overflow: hidden; }
 @media (min-width: 900px) {
   #app.mobile.pixel .quickbar { left: 50%; right: auto; width: 560px; transform: translateX(-50%); }
 }
+
+/* AI 步骤导演 · 像素版 */
+#app.mobile.pixel .castbanner {
+  top: 108px;
+  background: rgba(8,12,13,.95);
+  border: 2px solid var(--px-gold2);
+  color: var(--px-paper);
+  box-shadow: 3px 3px 0 #000, 0 0 20px rgba(208,174,88,.25);
+  font-family: 'FusionPixel', 'FusionPixel10', monospace;
+  font-size: 10px;
+}
+#app.mobile.pixel .castbanner.skill { border-color: var(--px-cyan); color: #d7f0f1; }
+#app.mobile.pixel .castbanner.weapon { border-color: var(--px-gold); color: #ffe7a0; }
+#app.mobile.pixel .aibanner {
+  top: 52px;
+  background: #0b1011;
+  border: 2px solid var(--px-cyan);
+  color: var(--px-paper);
+  box-shadow: 2px 2px 0 #000, 0 0 14px rgba(111,156,163,.2);
+  font-family: 'FusionPixel', 'FusionPixel10', monospace;
+  font-size: 9px;
+}
+#app.mobile.pixel .aibanner button {
+  background: #142022;
+  border: 2px solid var(--px-gold2);
+  color: var(--px-gold);
+  font-size: 8px;
+}
+#app.mobile.pixel .aitrack {
+  top: 82px;
+  background: rgba(6,9,10,.86);
+  border-bottom: 1px solid var(--px-stone2);
+  font-family: 'FusionPixel', 'FusionPixel10', monospace;
+}
+#app.mobile.pixel .aitrack b { color: var(--px-gold); }
+#app.mobile.pixel .aitrack span { color: var(--px-paper2); border-left-color: var(--px-stone2); }
+#app.mobile.pixel .aitrack span.cur { color: var(--px-gold); }
+#app.mobile.pixel .deathcard {
+  background: #120c0b;
+  border: 2px solid var(--px-red);
+  box-shadow: 3px 3px 0 #000, 0 0 22px rgba(180,71,47,.35);
+  font-family: 'FusionPixel', 'FusionPixel10', monospace;
+}
+#app.mobile.pixel .deathcard b { color: #ff9c8a; }
+#app.mobile.pixel .airecap {
+  background: #0b1011;
+  border: 2px solid var(--px-gold2);
+  box-shadow: 3px 3px 0 #000;
+  font-family: 'FusionPixel', 'FusionPixel10', monospace;
+}
+#app.mobile.pixel .airecap b { color: var(--px-gold); }
+#app.mobile.pixel .airecap li { color: var(--px-paper); }
+#app.mobile.pixel .airecap .recapdeath { border-top-color: var(--px-stone2); color: #ff9c8a; }
+#app.mobile.pixel .airecap button { background: #142022; border: 2px solid var(--px-stone2); color: var(--px-paper2); }
+#app.mobile.pixel .pxpulse { border-color: var(--px-gold); box-shadow: 0 0 22px rgba(208,174,88,.5), inset 0 0 18px rgba(111,156,163,.3); }
+#app.mobile.pixel .slot.ai-source { outline: 3px solid var(--px-cyan); outline-offset: 2px; box-shadow: 0 0 18px rgba(111,156,163,.55); }
+#app.mobile.pixel .slot.ai-target { outline: 3px solid var(--px-red); outline-offset: 2px; box-shadow: 0 0 18px rgba(180,71,47,.55); }
+
+/* 像素细节精修 */
+#app.mobile.pixel .unit {
+  border: 2px solid #0b0e0f;
+  box-shadow: inset 0 0 0 1px rgba(208,174,88,.5), inset 0 0 12px rgba(0,0,0,.28), 3px 3px 0 #000;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.05), transparent 30%),
+    var(--px-ink2);
+}
+#app.mobile.pixel .unit .uport { border: 1px solid var(--px-gold2); box-shadow: inset 0 0 0 1px #000; }
+#app.mobile.pixel .unit .uname { text-shadow: 1px 1px 0 #000; letter-spacing: .03em; }
+#app.mobile.pixel .unit .ustats span { box-shadow: 1px 1px 0 #000; }
+#app.mobile.pixel .slot { background: rgba(11,16,17,.28); }
+#app.mobile.pixel .slot .slothead { box-shadow: 1px 1px 0 #000; }
+#app.mobile.pixel .boardwrap { filter: drop-shadow(0 12px 0 #030505) drop-shadow(0 0 14px rgba(208,174,88,.09)); }
+#app.mobile.pixel .htile {
+  border: 2px solid #0a0d0e;
+  box-shadow: inset 0 0 0 1px rgba(208,174,88,.52), 3px 3px 0 #000;
+}
+#app.mobile.pixel .htile .hport { box-shadow: inset 0 0 0 1px rgba(0,0,0,.65); }
+#app.mobile.pixel .htile .hstats i { text-shadow: 1px 1px 0 #000; }
+#app.mobile.pixel .wcard, #app.mobile.pixel .skill { border-color: #4d5a5e; }
+#app.mobile.pixel .panelhead { color: #e0c374; }
+
+/* 天时福缘 · 像素开囊 */
+#app.mobile.pixel .screens .blessingpanel { border-color: var(--px-gold2); }
+#app.mobile.pixel .screens .blessingpanel h2 { color: var(--px-paper); font-family: 'FusionPixel', 'FusionPixel10', monospace; }
+#app.mobile.pixel .screens .blesslead { color: var(--px-paper2); }
+#app.mobile.pixel .pouch {
+  background:
+    linear-gradient(145deg, rgba(255,230,160,.12), transparent 35%),
+    linear-gradient(155deg, #9c302c, #611d22 58%, #2b1115);
+  border: 2px solid var(--px-gold2);
+  box-shadow: inset 0 0 0 1px #1a0b0c, 3px 3px 0 #000;
+  font-family: 'FusionPixel', 'FusionPixel10', monospace;
+}
+#app.mobile.pixel .pouch.picked { border-color: var(--px-gold); box-shadow: 0 0 0 2px var(--px-gold), 0 0 28px rgba(208,174,88,.45), 3px 3px 0 #000; }
+#app.mobile.pixel .pouch.picked .pouchtext { color: #fff3d0; }
+#app.mobile.pixel .pouch.trick { background: linear-gradient(150deg, #4f1b22, #1d1114 60%, #0c090a); border-color: #e0be67; }
+#app.mobile.pixel .pouch.trick .pouchname { color: #ffe4a1; }
+#app.mobile.pixel .blessfoot { color: var(--px-paper2); }
+#app.mobile.pixel .blessbar { background: #0c1213; border-left: 3px solid var(--px-gold); }
+#app.mobile.pixel .blessbar > span { color: var(--px-paper2); }
+#app.mobile.pixel .blessbar > b { color: var(--px-paper); }
+#app.mobile.pixel .blessbar > b.trick { color: #ff9c8a; }
+#app.mobile.pixel .foebless { color: var(--px-paper2); }
+#app.mobile.pixel .trickbtn { color: var(--px-gold); border: 2px solid var(--px-gold2); background: #142022; box-shadow: 2px 2px 0 #000; }
+
+/* 剧情关卡 · 像素 */
+#app.mobile.pixel .levelhead { color: var(--px-gold); font-family: 'FusionPixel', 'FusionPixel10', monospace; font-size: 9px; }
+#app.mobile.pixel .levelbtn { background: #0d1213; border: 2px solid var(--px-stone2); box-shadow: 2px 2px 0 #000; padding: 5px 6px; }
+#app.mobile.pixel .levelbtn b { color: var(--px-gold); font-family: 'FusionPixel', 'FusionPixel10', monospace; }
+#app.mobile.pixel .levelbtn span { color: var(--px-paper); font-size: 8px; }
+#app.mobile.pixel .levelbtn i { color: var(--px-paper2); }
+#app.mobile.pixel .levelbtn.sel { border-color: var(--px-gold); box-shadow: 0 0 0 1px var(--px-gold), 2px 2px 0 #000; background: #1a2224; }
+#app.mobile.pixel .leveldesc { border: 2px solid var(--px-stone2); background: #0b1011; box-shadow: 2px 2px 0 #000; }
+#app.mobile.pixel .leveldesc > div b { color: var(--px-paper); font-family: 'FusionPixel', 'FusionPixel10', monospace; }
+#app.mobile.pixel .leveldesc > div span { color: var(--px-paper2); }
+#app.mobile.pixel .leveldesc > div em { color: var(--px-gold); }
+#app.mobile.pixel .levelbadge { color: var(--px-gold); font-family: 'FusionPixel', 'FusionPixel10', monospace; }
+#app.mobile.pixel .screens .pausepanel h2 { color: var(--px-paper); }

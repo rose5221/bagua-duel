@@ -185,8 +185,19 @@
     if (g.skillsLeft > 0) {
       const sk = chooseSkill(g, pid, diff);
       if (sk) {
+        const skDef = D.SKILL_BY_KEY[sk.key];
+        const target = E.unitAt(g, sk.slot);
+        const extraUnit = sk.extra ? E.unitAt(g, sk.extra) : null;
         const r = E.useSkill(g, pid, sk.key, sk.slot, sk.extra);
-        if (r.ok) return { done: false, acted: 'skill', key: sk.key };
+        if (r.ok) return {
+          done: false, acted: 'skill', key: sk.key,
+          action: {
+            type: 'skill', key: sk.key, name: skDef ? skDef.name : sk.key,
+            slot: sk.slot, targetName: target ? target.card.name : '',
+            extraName: extraUnit ? extraUnit.card.name : '',
+            note: r.note || '', match: r.m || 0,
+          },
+        };
       }
     }
     // 落子
@@ -194,18 +205,59 @@
     if (places.length) {
       places.sort((a, b) => b.score - a.score);
       const pl = diff === 'easy' ? pick(places) : places[0];
+      const card = D.CARDS[pl.cid];
       const r = E.place(g, pid, pl.cid, pl.slot);
-      if (r.ok) return { done: false, acted: 'place' };
+      if (r.ok) return {
+        done: false, acted: 'place',
+        action: { type: 'place', cid: pl.cid, slot: pl.slot, name: card ? card.name : pl.cid },
+      };
     }
     // 单牌行动
     const act = chooseUnitAction(g, pid, diff);
     if (act) {
       let r;
-      if (act.type === 'attack') r = E.attack(g, pid, act.from, act.to);
-      else if (act.type === 'equip') r = E.equip(g, pid, act.wk, act.slot);
-      else if (act.type === 'defend') r = E.defend(g, pid, act.slot, act.mode);
-      else r = E.move(g, pid, act.from, act.to);
-      if (r && r.ok) return { done: false, acted: act.type };
+      if (act.type === 'attack') {
+        const fromU = E.unitAt(g, act.from), toU = E.unitAt(g, act.to);
+        const fc = E.forecast(g, pid, act.from, act.to);
+        r = E.attack(g, pid, act.from, act.to);
+        if (r && r.ok) return {
+          done: false, acted: 'attack',
+          action: {
+            type: 'attack', from: act.from, to: act.to,
+            fromName: fromU ? fromU.card.name : '',
+            targetName: toU ? toU.card.name : '',
+            damage: r.damage || 0, kill: toU ? toU.hp <= 0 : false,
+            forecast: fc || null, over: fc ? fc.over : false,
+          },
+        };
+      } else if (act.type === 'equip') {
+        const w = D.WEAPON_BY_KEY[act.wk], u = E.unitAt(g, act.slot);
+        r = E.equip(g, pid, act.wk, act.slot);
+        if (r && r.ok) return {
+          done: false, acted: 'equip',
+          action: {
+            type: 'equip', wk: act.wk, slot: act.slot,
+            name: w ? w.name : act.wk, targetName: u ? u.card.name : '',
+          },
+        };
+      } else if (act.type === 'defend') {
+        const u = E.unitAt(g, act.slot);
+        r = E.defend(g, pid, act.slot, act.mode);
+        if (r && r.ok) return {
+          done: false, acted: 'defend',
+          action: { type: 'defend', slot: act.slot, mode: act.mode, targetName: u ? u.card.name : '' },
+        };
+      } else {
+        const u = E.unitAt(g, act.from);
+        r = E.move(g, pid, act.from, act.to);
+        if (r && r.ok) return {
+          done: false, acted: 'move',
+          action: {
+            type: 'move', from: act.from, to: act.to,
+            fromName: u ? u.card.name : '', toName: D.TRIGRAMS[act.to] ? D.TRIGRAMS[act.to].name : act.to,
+          },
+        };
+      }
     }
     E.endTurn(g);
     return { done: true, ended: true };

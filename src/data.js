@@ -87,7 +87,7 @@
     { key: 'koushe', name: '口舌', trigram: 'dui', element: 'metal', attr: '泽', role: '少女', uses: 2,
       desc: '目标 +4 攻；若为泽或少女，每命中一项再 +2 攻。' },
     { key: 'guangming', name: '光明', trigram: 'li', element: 'fire', attr: '火', role: '中女', uses: 2,
-      desc: '目标及邻位友军 +4 血；若为火或中女，命中一项目标再 +4 血，两项则目标及邻位再 +4 血。' },
+      desc: '目标及邻位友军 +4 血，可超过生命上限形成灵光血；若为火或中女，命中一项目标再 +4 血，两项则目标及邻位再 +4 血。' },
     { key: 'dong', name: '动', trigram: 'zhen', element: 'wood', attr: '雷', role: '长男', uses: 2,
       desc: '目标额外行动一次；若为雷或长男，每命中一项再 +1 行动；两项时再选一个邻位友军 +1 行动。' },
     { key: 'ru', name: '入', trigram: 'xun', element: 'wood', attr: '风', role: '长女', uses: 2,

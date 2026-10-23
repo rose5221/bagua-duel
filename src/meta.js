@@ -27,6 +27,7 @@
       active: true, round: 1, locked: false, character: 'daotong',
       souls: freshSouls(), pos: freshPos(),
       sacrifices: 0, usedSacrificeAttrs: [], lastAttrs: [],
+      cooldowns: {}, usedThisMatch: [],
       lastResult: null,
     };
   }
@@ -36,6 +37,7 @@
       character: 'daotong',
       unlocked: { daotong: true, qingfeng: true, pangmen: true, chier: false },
       oldYinStreak: 0,
+      campaign: { unlocked: 1, cleared: [] },
       run: freshRun(),
     };
   }
@@ -43,6 +45,7 @@
     if (!saved || typeof saved !== 'object') return base;
     const out = Object.assign({}, base, saved);
     out.unlocked = Object.assign({}, base.unlocked, saved.unlocked || {});
+    out.campaign = Object.assign({}, base.campaign, saved.campaign || {});
     out.run = Object.assign({}, base.run, saved.run || {});
     out.run.souls = Object.assign({}, base.run.souls, (saved.run && saved.run.souls) || {});
     out.run.pos = Object.assign({}, base.run.pos, (saved.run && saved.run.pos) || {});
@@ -203,6 +206,26 @@
     }
     return mods;
   }
+  function campaign() { return cache.campaign || (cache.campaign = { unlocked: 1, cleared: [] }); }
+  function levelUnlocked(i) { return i < campaign().unlocked; }
+  function clearLevel(i) {
+    const c = campaign();
+    if (!c.cleared.includes(i)) c.cleared.push(i);
+    c.unlocked = Math.max(c.unlocked, Math.min(9, i + 2));
+    save();
+  }
+  function cooldown(key) { return cache.run.cooldowns && cache.run.cooldowns[key] || 0; }
+  function settleMatch(used) {
+    const u = Array.isArray(used) ? used : [];
+    const all = HUN_KEYS.concat(PO_KEYS);
+    cache.run.cooldowns = cache.run.cooldowns || {};
+    for (const key of all) {
+      if (u.includes(key)) cache.run.cooldowns[key] = 1;
+      else if (cache.run.cooldowns[key] > 0) cache.run.cooldowns[key]--;
+    }
+    cache.run.usedThisMatch = [];
+    save();
+  }
   function failRun() {
     cache.run.active = false;
     save();
@@ -230,7 +253,7 @@
     HUN_KEYS, PO_KEYS,
     get, save, reload, unlocked, characterOpen, characterTag,
     selectCharacter, recordDivine, lockCharacter,
-    aliveHuns, alivePos, loseHun, losePos, gainPseudoPos, markPseudoPos, sacrifice, makePseudoSoul, makePseudoPos,
+    campaign, levelUnlocked, clearLevel, cooldown, settleMatch, aliveHuns, alivePos, loseHun, losePos, gainPseudoPos, markPseudoPos, sacrifice, makePseudoSoul, makePseudoPos,
     gameMods, failRun, startNextRound, resetRun,
     accountName, storageKey,
   };

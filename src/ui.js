@@ -8,7 +8,7 @@
   const TAIJI = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="48" fill="#F7F3E8" stroke="#17191B" stroke-width="2"/><path d="M50 2 A48 48 0 0 1 50 98 A24 24 0 0 1 50 50 A24 24 0 0 0 50 2 Z" fill="#17191B"/><circle cx="50" cy="26" r="7.5" fill="#F7F3E8"/><circle cx="50" cy="74" r="7.5" fill="#17191B"/></svg>';
   const TAIJI_FIRE = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="48" fill="#F7F3E8" stroke="#17191B" stroke-width="2"/><path d="M50 2 A48 48 0 0 1 50 98 A24 24 0 0 1 50 50 A24 24 0 0 0 50 2 Z" fill="#B4472F"/><circle cx="50" cy="26" r="7.5" fill="#F7F3E8"/><circle cx="50" cy="74" r="7.5" fill="#B4472F"/></svg>';
 
-  const S = { g: null, sel: null, mode: null, extra: null, preview: null, pending: null, difficulty: 'normal', character: 'daotong', charChoice: null, metaSettled: false, lossChoice: null, aiTimer: 0, lastTerm: '', lastRound: 0, flash: '', flashTimer: 0 };
+  const S = { g: null, sel: null, mode: null, extra: null, preview: null, pending: null, difficulty: 'normal', character: 'daotong', charChoice: null, metaSettled: false, lossChoice: null, seasonBlessing: null, trickPicks: [], cooldownSettled: false, level: 0, campaignCleared: false, paused: false, aiTimer: 0, aiTurn: false, aiStep: 0, aiActions: [], aiDeaths: [], aiFast: false, lastTerm: '', lastRound: 0, flash: '', flashTimer: 0 };
 
   /* ---------- 天气层 ---------- */
   const FX = (function () {
@@ -157,9 +157,17 @@
     const locked = !!(run && run.locked);
     const runH = meta ? meta.aliveHuns().length : 3;
     const runP = meta ? meta.alivePos().length : 7;
+    const camp = window.Campaign;
+    const prog = meta ? meta.campaign() : { unlocked: 1, cleared: [] };
+    if (camp) {
+      S.level = Math.max(0, Math.min(S.level, camp.count - 1));
+      if (!meta || !meta.levelUnlocked(S.level)) S.level = Math.min(prog.unlocked - 1, camp.count - 1);
+      S.difficulty = camp.get(S.level).difficulty;
+    }
+    const cur = camp ? camp.get(S.level) : null;
     el.innerHTML = `<div class="panel startpanel">
       <div class="kick">BAGUA DUEL · 64</div>
-      <h1>八卦对决</h1>
+      <h1>八卦弈魂</h1>
       <p class="lead">两个人面对面，中间一张八卦盘；开局纯黑，方位随机。<br>每人 4 属性 × 8 张 = 32 张牌库；入座后随机取 2 属性 × 4 张 = 8 张出战；场上最多 3 张。</p>
       <div class="startrow">
         <div class="startbox"><b>行动</b><span>每回合落 1 张人物牌；场上每张牌各攻击 / 装备 / 移动一次；技能最多 2 张。</span></div>
@@ -176,15 +184,22 @@
       }).join('')}</div>
       <div class="charstreak">${locked ? '角色已锁定 · 整条弈魂不可更换' : chierOpen ? '痴儿已解锁 · 可在上方直接选择' : streak ? `道童老阴连续 ${streak}/3 · 再成一次解锁痴儿` : '痴儿：道童卜卦连续三次老阴后解锁'}</div>
       <div class="runmeta">弈魂 · 第 ${run ? run.round : 1} 局 · 魂 ${runH}/3 · 魄 ${runP}/7 · 献祭 ${run ? run.sacrifices : 0}</div>
-      <div class="diffhead">人机难度</div>
-      <div class="diffbtns">${DIFFICULTY.map(d => `<button class="diff ${S.difficulty === d.key ? 'sel' : ''}" data-diff="${d.key}"><b>${d.name}</b><span>${d.desc}</span></button>`).join('')}</div>
-      <div class="startbtns"><button class="primary" id="btnStart">入座</button><button id="btnRules2">规则</button></div>
+      <div class="levelhead">剧情关卡</div>
+      <div class="levelpick">${camp ? camp.LEVELS.map((lv, i) => {
+        const open = meta ? meta.levelUnlocked(i) : i === 0;
+        const cleared = prog.cleared.includes(i);
+        return `<button class="levelbtn ${S.level === i ? 'sel' : ''} ${cleared ? 'cleared' : ''}" data-level="${i}" ${open ? '' : 'disabled'}><b>${lv.num}</b><span>${lv.name}</span><i>${cleared ? '已过' : open ? lv.boss : '未解锁'}</i></button>`;
+      }).join('') : ''}</div>
+      ${cur ? `<div class="leveldesc">${cur.taiji ? '<div class="taijiboss">☯</div>' : (cur.portrait ? D.portraitHtml(D.CARDS[cur.portrait], 44, 58) : '')}<div><b>${cur.num} · ${cur.name} · ${cur.boss}</b><span>${cur.story}</span><em>${cur.desc}</em></div></div>` : ''}
+      <div class="startbtns"><button class="primary" id="btnStart">${cur ? '入座 · ' + cur.num : '入座'}</button><button id="btnRules2">规则</button></div>
       <div class="startfoot">${chierOpen ? '四角色均可选' : '坐北朝南先手 · 道童 / 清风 / 旁门可选；痴儿连续三次老阴解锁'} · 随机 2 属性 × 4 张出战</div>
     </div>`;
     el.classList.add('show');
-    el.querySelectorAll('.diff').forEach(b => b.onclick = () => {
-      S.difficulty = b.dataset.diff;
-      el.querySelectorAll('.diff').forEach(x => x.classList.toggle('sel', x === b));
+    el.querySelectorAll('.levelbtn').forEach(b => b.onclick = () => {
+      if (b.disabled) return;
+      S.level = Number(b.dataset.level);
+      if (camp) S.difficulty = camp.get(S.level).difficulty;
+      showStart();
     });
     el.querySelectorAll('.charpick-btn').forEach(b => b.onclick = () => {
       if (b.disabled) return;
@@ -192,7 +207,7 @@
       if (meta) meta.selectCharacter(S.character);
       el.querySelectorAll('.charpick-btn').forEach(x => x.classList.toggle('sel', x === b));
     });
-    $('btnStart').onclick = () => { el.classList.remove('show'); startGame(); };
+    $('btnStart').onclick = () => { el.classList.remove('show'); beginSeason(); };
     $('btnRules2').onclick = showRules;
   }
 
@@ -329,8 +344,13 @@
     if (meta) {
       for (const k of g.lostHuns || []) meta.loseHun(k);
       for (const k of g.pseudoPos || []) meta.markPseudoPos(k);
+      if (!S.cooldownSettled) { meta.settleMatch(g.summoned || []); S.cooldownSettled = true; }
     }
     const run = meta ? meta.get().run : null;
+    const camp = window.Campaign;
+    const level = camp ? camp.get(S.level) : null;
+    const isFinal = S.level >= (camp ? camp.count - 1 : 0);
+    if (win && level && meta && !S.campaignCleared) { meta.clearLevel(S.level); S.campaignCleared = true; }
     const aliveH = meta ? meta.aliveHuns() : [];
     const aliveP = meta ? meta.alivePos() : [];
     const failed = meta ? (aliveH.length <= 1 && aliveP.length <= 1) : false;
@@ -380,10 +400,11 @@
     }
     const canNext = meta && !failed && (win || S.metaSettled);
     const canLeave = !meta || win || S.metaSettled || failed;
+    const nextLabel = level ? (win ? (isFinal ? '回到主界面' : '下一关') : '重试本关') : '下一局';
     el.innerHTML = `<div class="panel resultpanel">
       <div class="kick">${win ? 'WIN' : 'LOSE'}</div>
       <h1>${win ? '你赢了' : '庄家赢了'}</h1>
-      <p class="lead">${win ? '庄家 8 张人物牌尽失。' : '你的 8 张人物牌尽失。'}</p>
+      <p class="lead">${win ? '庄家 8 张人物牌尽失。' : '你的 8 张人物牌尽失。'}${level ? ` · ${level.num} ${level.name} · ${level.boss}` : ''}</p>
       <div class="resultrow">
         <div><b>你</b><span>余 ${E.remaining(g.players[0])} / 8</span></div>
         <div><b>庄家</b><span>余 ${E.remaining(g.players[1])} / 8</span></div>
@@ -391,7 +412,7 @@
       </div>
       ${metaHtml}
       <div class="startbtns">
-        ${canNext ? '<button class="primary" id="btnNext">下一局</button>' : ''}
+        ${canNext ? `<button class="primary" id="btnNext">${nextLabel}</button>` : ''}
         ${failed ? '<button class="primary" id="btnResetMeta">重开弈魂</button>' : ''}
         ${canLeave ? '<button id="btnMenu">回到封面</button>' : ''}
       </div>
@@ -461,8 +482,19 @@
     const next = $('btnNext');
     if (next) next.onclick = () => {
       el.classList.remove('show');
+      if (level) {
+        if (win) {
+          if (isFinal) { S.g = null; showStart(); return; }
+          S.level = Math.min(S.level + 1, camp.count - 1);
+          if (meta) meta.startNextRound();
+          beginSeason();
+        } else {
+          beginSeason();
+        }
+        return;
+      }
       if (meta) meta.startNextRound();
-      startGame();
+      beginSeason();
     };
     const reset = $('btnResetMeta');
     if (reset) reset.onclick = () => {
@@ -474,6 +506,91 @@
     if (menu) menu.onclick = () => { el.classList.remove('show'); S.g = null; S.sel = null; showStart(); };
   }
 
+  function beginSeason() {
+    closeSheets();
+    const meta = window.Meta;
+    const round = meta ? meta.get().run.round : 1;
+    const B = window.Blessings;
+    if (!B) { startGame(); return; }
+    const season = B.seasonForRound(round);
+    const draw = B.draw(season, true);
+    const level = window.Campaign ? window.Campaign.get(S.level) : null;
+    const bossBless = level && level.effect ? B.BY_KEY[level.effect] : null;
+    const foeDraw = B.draw(season, false);
+    const foe = level ? (bossBless || null) : foeDraw.options[Math.floor(Math.random() * foeDraw.options.length)];
+    S.seasonBlessing = { season, options: draw.options, foe, player: null, level: S.level };
+    renderSeasonBlessing();
+  }
+  function renderSeasonBlessing() {
+    const el = $('screens');
+    const p = S.seasonBlessing;
+    if (!p) { startGame(); return; }
+    const B = window.Blessings;
+    const seasonName = B.seasonName(p.season);
+    el.innerHTML = `<div class="panel blessingpanel">
+      <div class="kick">天时 · ${seasonName}</div>
+      <h2>三囊择一</h2>
+      <p class="blesslead">本局${seasonName}季，选一枚锦囊带入对局。${p.options.some(x => x.kind === 'trick') ? '有一枚黑金绳妙计混在其中。' : '庄家也会同时开囊。'}</p>
+      <div class="pouchrow">${p.options.map((o, i) => `<button class="pouch ${o.kind === 'trick' ? 'trick' : ''} shape-${o.shape || 'gourd'}" data-blessing="${i}">
+        <span class="pouchcord"></span><span class="pouchseal">${o.term || ''}</span>
+        <span class="pouchname">${o.name}</span><span class="pouchterm">${o.kind === 'trick' ? '妙计' : o.term}</span>
+        <span class="pouchtext">${o.text || ''}</span>
+        ${o.kind === 'trick' ? '<i class="trickmark">妙</i>' : ''}
+      </button>`).join('')}</div>
+      <div class="blessfoot">自选一枚 · 不重抽 · 本局有效 · 庄家：${p.foe ? p.foe.name : '无'}</div>
+    </div>`;
+    el.classList.add('show');
+    el.querySelectorAll('[data-blessing]').forEach(btn => btn.onclick = () => {
+      if (S.seasonBlessing.player) return;
+      const opt = S.seasonBlessing.options[Number(btn.dataset.blessing)];
+      S.seasonBlessing.player = opt;
+      btn.classList.add('picked');
+      el.querySelectorAll('[data-blessing]').forEach(x => x.classList.toggle('dim', x !== btn));
+      showCastBanner(`${opt.name} · ${opt.text}`, opt.kind === 'trick' ? 'weapon' : 'skill');
+      setTimeout(() => { el.classList.remove('show'); startGame(); }, 650);
+    });
+  }
+
+
+  function openPause() {
+    if (!S.g || S.g.over) return;
+    if ($('screens').classList.contains('show')) return;
+    S.paused = true;
+    clearTimeout(S.aiTimer);
+    const el = $('screens');
+    el.innerHTML = `<div class="panel pausepanel">
+      <div class="kick">八卦弈魂</div><h2>暂停</h2>
+      <p class="blesslead">${S.g.turn === FOE ? '庄家正在行动；继续后会从当前步骤接着播放。' : '牌局已暂停。'}</p>
+      <div class="startbtns"><button class="primary" id="pauseResume">继续</button><button id="pauseRestart">重新开始</button><button id="pauseHome">回到主界面</button></div>
+    </div>`;
+    el.classList.add('show');
+    $('pauseResume').onclick = () => {
+      el.classList.remove('show'); S.paused = false;
+      if (!S.g) return;
+      if (S.g.turn === FOE) {
+        refresh();
+        S.aiTimer = setTimeout(() => {
+          if (!S.g || S.g.over) return;
+          if (S.aiTurn) aiNextStep(); else startAI();
+        }, 400);
+      }
+    };
+    $('pauseRestart').onclick = () => {
+      el.classList.remove('show'); S.paused = false;
+      clearTimeout(S.aiTimer); S.aiTurn = false;
+      if (S.g && window.Meta) window.Meta.settleMatch(S.g.summoned || []);
+      S.g = null;
+      beginSeason();
+    };
+    $('pauseHome').onclick = () => {
+      el.classList.remove('show'); S.paused = false;
+      clearTimeout(S.aiTimer); S.aiTurn = false;
+      if (S.g && window.Meta) window.Meta.settleMatch(S.g.summoned || []);
+      S.g = null; S.seasonBlessing = null;
+      showStart();
+    };
+  }
+
   function startGame() {
     closeSheets();
     if (window.Meta) {
@@ -483,16 +600,34 @@
     const mods = window.Meta ? window.Meta.gameMods() : {};
     const run = window.Meta ? window.Meta.get().run : null;
     const lostHuns = run ? Object.keys(run.souls).filter(k => run.souls[k].lost && !run.souls[k].pseudo) : [];
-    S.g = E.newGame({ difficulty: S.difficulty, character: S.character, mods, lostHuns });
+    const B = window.Blessings;
+    const level = window.Campaign ? window.Campaign.get(S.level) : null;
+    if (level) S.difficulty = level.difficulty;
+    const season = S.seasonBlessing ? S.seasonBlessing.season : (B ? B.seasonForRound(run ? run.round : 1) : 'spring');
+    const spot = S.seasonBlessing ? S.seasonBlessing.player : (B ? B.draw(season, false).options[0] : null);
+    const foeSpot = S.seasonBlessing ? S.seasonBlessing.foe : (level && level.effect && B ? B.BY_KEY[level.effect] : null);
+    S.g = E.newGame({
+      difficulty: S.difficulty, character: S.character, mods, lostHuns,
+      blessing: spot, foeBlessing: foeSpot, season,
+      startMonth: B ? B.startMonth(season) : 1,
+      cooldowns: run && run.cooldowns ? run.cooldowns : {},
+      levelName: level ? level.name : '', bossName: level ? level.boss : '', levelIndex: S.level,
+    });
+    S.seasonBlessing = null;
     if (window.Meta) {
       window.Meta.get().run.lastAttrs = S.g.players[0].attrs.slice();
       window.Meta.save();
     }
     S.prep = null;
     $('screens').classList.remove('show');
-    S.sel = null; S.mode = null; S.extra = null; S.preview = null; S.pending = null; S.charChoice = null; S.metaSettled = false; S.lossChoice = null;
+    clearTimeout(S.aiTimer);
+    S.aiTurn = false; S.aiStep = 0; S.aiActions = []; S.aiDeaths = []; S.aiFast = false;
+    const aiBar = document.querySelector('.aibanner'); if (aiBar) aiBar.classList.remove('show');
+    const aiTrack = document.querySelector('.aitrack'); if (aiTrack) aiTrack.classList.remove('show');
+    S.sel = null; S.mode = null; S.extra = null; S.preview = null; S.pending = null; S.charChoice = null; S.metaSettled = false; S.lossChoice = null; S.cooldownSettled = false; S.paused = false; S.campaignCleared = false;
     S.lastTerm = ''; S.lastRound = 0;
     updateTerm(true);
+    applyBoardSkin();
     renderAll();
     if (S.g.turn === FOE) startAI();
   }
@@ -601,7 +736,7 @@
       const list = (isAvatar ? D.HUNS : D.POS).filter(x => {
         if (!run) return true;
         const st = isAvatar ? run.souls[x.key] : run.pos[x.key];
-        return st && !st.lost;
+        return st && !st.lost && !(window.Meta && window.Meta.cooldown(x.key) > 0);
       });
       choiceHtml = `<div class="cchoice">
         <div class="cchoicehead">${isAvatar ? '选一魂化为化身（木 · 20/40 · 不占上限）' : '选一魄化为分身（金 · 20/30 · 占上限）'}</div>
@@ -741,6 +876,15 @@
     if (u.attackBan > 0) t.push(`<i class="st ban">攻禁${u.banTurns || u.attackBan}</i>`);
     if (u.skillBan > 0) t.push('<i class="st sban">技禁</i>');
     return t.length ? `<div class="ubadges">${t.join('')}</div>` : '';
+  }
+
+  function applyBoardSkin() {
+    const b = $('board');
+    if (!b || !S.g) return;
+    const level = window.Campaign ? window.Campaign.get(S.g.levelIndex || 0) : null;
+    const key = level ? level.key : 'taiji';
+    b.style.backgroundImage = `url('assets/pixel/boards/table_${key}.png')`;
+    b.dataset.level = key;
   }
 
   function renderBoard() {
@@ -917,6 +1061,12 @@
     if (g.over) { el.textContent = '对局结束'; return; }
     if (g.turn === FOE) { el.innerHTML = '<b>庄家行动中…</b>'; return; }
     if (S.pending) { el.innerHTML = '再点一次目标确认攻击 · 点别处取消'; return; }
+    if (S.mode === 'trick') {
+      const b = g.blessings ? g.blessings[HUMAN] : null;
+      const two = b && b.key === 't_autumn';
+      el.innerHTML = `妙计「${b ? b.name : ''}」：${two ? (S.trickPicks.length ? '再选第二张牌' : '选第一张牌') : '选一个目标'}`;
+      return;
+    }
     if (S.mode === 'place') { el.innerHTML = '落子：点一个空席 <span class="sub">或再点一张牌取消</span>'; return; }
     if (S.mode === 'unit') {
       let bar = '';
@@ -948,9 +1098,52 @@
   function renderSeason() {
     const g = S.g;
     const idx = (g.month - 1) % 12;
-    $('season').innerHTML = `<div class="seasontop"><span>场地 · 每轮开始</span><b>${g.term.name}</b></div>
+    const B = window.Blessings;
+    const b = g.blessings ? g.blessings[HUMAN] : null;
+    const foe = g.blessings ? g.blessings[FOE] : null;
+    const st = g.blessState ? g.blessState[HUMAN] : null;
+    const trickReady = !!(b && b.kind === 'trick' && b.key !== 't_winter' && st && !st.trick);
+    const seasonTxt = B ? B.seasonName(g.season) : '—';
+    $('season').innerHTML = `${g.levelName ? `<div class="levelbadge">${g.levelName} · ${g.bossName}</div>` : ''}<div class="blessbar"><span>天时 · ${seasonTxt}</span><b class="${b && b.kind === 'trick' ? 'trick' : ''}">${b ? b.name : '无'}</b>${trickReady ? `<button class="trickbtn" data-trick-start>妙计可用</button>` : ''}</div>
+      <div class="foebless">庄家福缘：${foe ? foe.name : '无'}</div>
+      <div class="seasontop"><span>场地 · 每轮开始</span><b>${g.term.name}</b></div>
       ${FIELD_RULES.map(f => `<div class="fgrow" style="--c:${ELEMENTS[f.el].color}"><b>${ELEMENTS[f.el].name}</b><span>生 ${f.gen}</span><span>同 ${f.equal}</span><span>克 ${f.over}</span></div>`).join('')}
       <div class="termline">第 ${g.month} 月 · ${g.term.name}/${g.term.zhong}</div>`;
+  }
+
+  function startTrick() {
+    const g = S.g;
+    if (!g || g.over || g.turn !== HUMAN) return;
+    const b = g.blessings ? g.blessings[HUMAN] : null;
+    const st = g.blessState ? g.blessState[HUMAN] : null;
+    if (!b || b.kind !== 'trick' || b.key === 't_winter') { flashMsg('这个妙计会在阵亡时自动触发'); return; }
+    if (st && st.trick) { flashMsg('本季妙计已经用过'); return; }
+    S.mode = 'trick'; S.trickPicks = []; S.sel = { type: 'trick' }; S.extra = null; S.pending = null;
+    renderAll();
+  }
+  function useTrickAt(key) {
+    const g = S.g, b = g && g.blessings ? g.blessings[HUMAN] : null;
+    if (!b || b.kind !== 'trick') return;
+    if (b.key === 't_autumn') {
+      if (!S.trickPicks.length) {
+        if (!E.unitAt(g, key)) { flashMsg('选一张场上的牌'); return; }
+        S.trickPicks = [key]; renderAll(); return;
+      }
+      if (S.trickPicks[0] === key) { flashMsg('选另一张牌'); return; }
+      const r = E.useTrick(g, HUMAN, S.trickPicks[0], key);
+      if (!r.ok) { flashMsg(r.msg); return; }
+      showCastBanner(`妙计 · ${b.name}`, 'weapon');
+      pulseSlot(key, 'weapon');
+      clearSel(); S.trickPicks = []; refresh(); checkOver(); return;
+    }
+    const u = E.unitAt(g, key);
+    if (b.key === 't_spring' && (!u || u.owner === HUMAN)) { flashMsg('借东风要选一名敌人'); return; }
+    if (b.key === 't_summer' && (!u || u.owner === HUMAN || !u.burn)) { flashMsg('火中取栗要选一名已灼烧的敌人'); return; }
+    const r = E.useTrick(g, HUMAN, key);
+    if (!r.ok) { flashMsg(r.msg); return; }
+    showCastBanner(`妙计 · ${b.name}`, 'weapon');
+    pulseSlot(key, 'weapon');
+    clearSel(); refresh(); checkOver();
   }
 
   const KIND = { month: '月', turn: '手', place: '出', attack: '攻', equip: '装', move: '移', skill: '技', death: '亡', end: '终', term: '场', defend: '御', round: '转', sign: '签', divine: '卦' };
@@ -978,10 +1171,178 @@
     el.textContent = text + (kill ? ' · 击杀' : '');
     el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
   }
-  function announceSkill(r, fallbackKey) {
+  function announceSkill(r, fallbackKey, slot) {
     if (!r || !r.note) return;
     const name = r.skill || (D.SKILL_BY_KEY[fallbackKey] || {}).name || '技能';
     showCombo(`${name} · ${r.note}`, false);
+    showCastBanner(`${name} · ${r.note}`, 'skill');
+    if (slot) pulseSlot(slot, 'skill');
+  }
+
+  function ensureAiUi() {
+    const host = $('app') || document.body;
+    if ($('aiBanner')) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'aiui';
+    wrap.innerHTML = `<div class="castbanner" id="castBanner"></div>
+      <div class="aibanner" id="aiBanner"><span id="aiBannerText"></span><button id="btnAiSkip">加速</button></div>
+      <div class="aitrack" id="aiTrack"></div>
+      <div class="deathcard" id="deathCard"></div>
+      <div class="airecap" id="aiRecap"><div id="aiRecapBody"></div><button id="aiRecapClose">收起</button></div>`;
+    host.appendChild(wrap);
+    const skip = $('btnAiSkip');
+    if (skip) skip.addEventListener('click', () => { S.aiFast = true; });
+    const close = $('aiRecapClose');
+    if (close) close.addEventListener('click', () => $('aiRecap').classList.remove('show'));
+  }
+  function showCastBanner(text, type) {
+    ensureAiUi();
+    const el = $('castBanner');
+    if (!el) return;
+    el.className = 'castbanner ' + (type || '');
+    el.textContent = text;
+    void el.offsetWidth;
+    el.classList.add('show');
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove('show'), 1500);
+  }
+  function pulseAt(rect, type) {
+    if (!rect) return;
+    const el = document.createElement('div');
+    el.className = 'pxpulse ' + (type || 'skill');
+    el.style.left = rect.left + 'px';
+    el.style.top = rect.top + 'px';
+    el.style.width = rect.width + 'px';
+    el.style.height = rect.height + 'px';
+    const colors = type === 'weapon' ? ['#f0cc6e', '#d0ae58', '#f7f3e8'] : ['#f0cc6e', '#6f9ca3', '#b4472f', '#f7f3e8'];
+    el.innerHTML = Array.from({ length: 14 }, (_, i) => {
+      const a = (Math.PI * 2 * i) / 14 + Math.random() * .4;
+      const d = 18 + Math.random() * 28;
+      return `<i style="--dx:${Math.cos(a) * d}px;--dy:${Math.sin(a) * d}px;--c:${colors[i % colors.length]};--dl:${Math.random() * .12}s"></i>`;
+    }).join('');
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 900);
+  }
+  function pulseSlot(slot, type) {
+    const el = document.querySelector(`.slot[data-slot="${slot}"] .unit`);
+    if (el) pulseAt(el.getBoundingClientRect(), type);
+  }
+  function showAiBanner(text) {
+    ensureAiUi();
+    const b = $('aiBanner');
+    const t = $('aiBannerText');
+    if (t) t.textContent = text;
+    if (b) b.classList.add('show');
+  }
+  function hideAiBanner() {
+    const b = $('aiBanner');
+    if (b) b.classList.remove('show');
+  }
+  function aiLabel(a) {
+    if (!a) return '行动';
+    if (a.type === 'skill') return `技能「${a.name}」→ ${a.targetName || '目标'}`;
+    if (a.type === 'place') return `落子「${a.name}」→ ${D.TRIGRAMS[a.slot] ? D.TRIGRAMS[a.slot].name : a.slot}`;
+    if (a.type === 'attack') return `攻击「${a.targetName}」- ${a.damage}`;
+    if (a.type === 'equip') return `装备「${a.name}」→ ${a.targetName}`;
+    if (a.type === 'move') return `移动 ${D.TRIGRAMS[a.from] ? D.TRIGRAMS[a.from].name : a.from} → ${D.TRIGRAMS[a.to] ? D.TRIGRAMS[a.to].name : a.to}`;
+    if (a.type === 'defend') return `${a.mode === 'firm' ? '坚守' : '仓促'}防御 · ${a.targetName}`;
+    return '行动';
+  }
+  function renderAiTrack() {
+    const el = $('aiTrack');
+    if (!el) return;
+    if (!S.aiTurn || !S.aiActions.length) { el.classList.remove('show'); el.innerHTML = ''; return; }
+    el.classList.add('show');
+    el.innerHTML = `<b>庄家 · 第 ${S.aiActions.length} 步</b>` + S.aiActions.map((a, i) =>
+      `<span class="${i === S.aiActions.length - 1 ? 'cur' : ''}">${i + 1} ${aiLabel(a)}</span>`).join('');
+  }
+  function markAi(a, on) {
+    document.querySelectorAll('.ai-source,.ai-target').forEach(x => x.classList.remove('ai-source', 'ai-target'));
+    if (!on || !a) return;
+    const add = (slot, cls) => { if (!slot) return; const el = document.querySelector(`.slot[data-slot="${slot}"]`); if (el) el.classList.add(cls); };
+    if (a.type === 'attack') { add(a.from, 'ai-source'); add(a.to, 'ai-target'); }
+    else if (a.type === 'move') { add(a.from, 'ai-source'); add(a.to, 'ai-target'); }
+    else { add(a.slot, 'ai-target'); if (a.type === 'place') add(a.slot, 'ai-target'); }
+  }
+  function showDeathCard(a, logs) {
+    ensureAiUi();
+    const el = $('deathCard');
+    if (!el) return;
+    const death = (logs || []).filter(l => l.kind === 'death').slice(-1)[0];
+    let formula = '';
+    if (a && a.type === 'attack' && a.forecast) {
+      const f = a.forecast;
+      formula = `基础 ${f.base} · 盾挡 ${f.absorbed}${f.halved ? ` · 防御减半 -${f.halved}` : ''} · 实伤 ${a.damage}`;
+    } else if (a && a.type === 'skill') {
+      formula = `${a.name}${a.note ? ' · ' + a.note : ''}`;
+    }
+    el.innerHTML = `<b>「${a && a.targetName ? a.targetName : '人物牌'}」阵亡</b><span>${a && a.fromName ? a.fromName + ' → ' + a.targetName : '阵亡'}</span>${formula ? `<div>${formula}</div>` : ''}${death ? `<small>${death.text}</small>` : ''}`;
+    el.classList.add('show');
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove('show'), 1800);
+  }
+  function showAiRecap() {
+    ensureAiUi();
+    const el = $('aiRecap'), body = $('aiRecapBody');
+    if (!el || !body || !S.aiActions.length) return;
+    const deaths = S.aiDeaths.slice(-2);
+    body.innerHTML = `<b>庄家这一手 · ${S.aiActions.length} 步</b><ol>${S.aiActions.map(a => `<li>${aiLabel(a)}</li>`).join('')}</ol>${deaths.length ? `<div class="recapdeath">${deaths.map(d => `<span>${d}</span>`).join('')}</div>` : ''}`;
+    el.classList.add('show');
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove('show'), 8000);
+  }
+  function aiActionSlot(a) {
+    if (!a) return null;
+    if (a.type === 'attack') return a.to;
+    if (a.type === 'move') return a.to;
+    return a.slot;
+  }
+  function aiNextStep() {
+    if (!S.g || S.g.over || S.g.turn !== FOE) { finishAiTurn(); return; }
+    const beforeLog = S.g.log.length;
+    const r = AI.step(S.g, FOE);
+    if (!r || !r.action) { finishAiTurn(); return; }
+    const a = r.action;
+    S.aiStep++;
+    S.aiActions.push(a);
+    S.sel = null; S.mode = null; S.extra = null; S.pending = null;
+    showAiBanner(`第 ${S.aiActions.length} 步 · ${aiLabel(a)}`);
+    markAi(a, true);
+    renderAiTrack();
+    const slot = aiActionSlot(a);
+    const rect = slot ? document.querySelector(`.slot[data-slot="${slot}"]`)?.getBoundingClientRect() || null : null;
+    const intentDelay = S.aiFast || S.aiActions.length >= 5 ? 180 : 430;
+    S.aiTimer = setTimeout(() => {
+      refresh();
+      markAi(a, false);
+      if (a.type === 'skill') {
+        showCastBanner(`庄家 · ${a.name}${a.targetName ? ' → ' + a.targetName : ''}`, 'skill');
+        pulseAt(rect, 'skill');
+      } else if (a.type === 'equip') {
+        showCastBanner(`庄家装备 · ${a.name} → ${a.targetName}`, 'weapon');
+        pulseAt(rect, 'weapon');
+      } else if (a.type === 'attack' && rect) {
+        FX.hitAt(rect, String(a.damage), a.kill);
+      }
+      const newLogs = S.g.log.slice(beforeLog);
+      const newDeaths = newLogs.filter(l => l.kind === 'death');
+      S.aiDeaths.push(...newDeaths.map(l => l.text));
+      if (a.kill || newDeaths.length) showDeathCard(a, newLogs);
+      renderAiTrack();
+      const resultDelay = S.aiFast || S.aiActions.length >= 5 ? 300 : 700;
+      S.aiTimer = setTimeout(aiNextStep, resultDelay);
+    }, intentDelay);
+  }
+  function finishAiTurn() {
+    clearTimeout(S.aiTimer);
+    S.aiTurn = false;
+    hideAiBanner();
+    markAi(null, false);
+    renderAiTrack();
+    if (!S.g) return;
+    refresh();
+    showAiRecap();
+    if (S.g.over) setTimeout(showResult, 1100);
   }
   function shakeArena() {
     const el = document.querySelector('.arena');
@@ -1021,7 +1382,7 @@
     if (S.mode === 'cheng' && S.extra && S.extra.slot) {
       const r = E.useSkill(S.g, HUMAN, S.sel.key, S.extra.slot, wk);
       if (!r.ok) { flashMsg(r.msg); return; }
-      announceSkill(r, S.sel.key);
+      announceSkill(r, S.sel.key, S.extra.slot);
       clearSel(); refresh(); checkOver(); return;
     }
     if (S.sel && S.sel.type === 'weapon' && S.sel.key === wk) { clearSel(); renderAll(); return; }
@@ -1056,6 +1417,7 @@
       if (u) { S.sel = { type: 'unit', slot: key }; S.mode = null; renderAll(); }
       return;
     }
+    if (S.mode === 'trick') { useTrickAt(key); return; }
     if (S.mode === 'place' && S.sel && S.sel.type === 'card') {
       const r = E.place(g, HUMAN, S.sel.id, key);
       if (!r.ok) { flashMsg(r.msg); return; }
@@ -1094,8 +1456,12 @@
     }
     if (S.mode === 'equip' && S.sel && S.sel.type === 'weapon') {
       if (u && u.owner === HUMAN && E.equipTargets(g, HUMAN).includes(key)) {
-        const r = E.equip(g, HUMAN, S.sel.key, key);
+        const wk = S.sel.key;
+        const r = E.equip(g, HUMAN, wk, key);
         if (!r.ok) { flashMsg(r.msg); return; }
+        const w = D.WEAPON_BY_KEY[wk];
+        showCastBanner(`装备 · ${w ? w.name : wk} → ${u.card.name}`, 'weapon');
+        pulseSlot(key, 'weapon');
         clearSel(); refresh(); checkOver(); return;
       }
     }
@@ -1120,22 +1486,26 @@
         }
         const r = E.useSkill(g, HUMAN, sk, key, null);
         if (!r.ok) { flashMsg(r.msg); return; }
-        clearSel(); refresh(); announceSkill(r, sk); checkOver(); return;
+        clearSel(); refresh(); announceSkill(r, sk, key); checkOver(); return;
       }
     }
     if (S.mode === 'zhi' && S.extra) {
       if (u && u.owner !== HUMAN && E.rangeEnemies(g, S.extra.slot).includes(key)) {
-        const r = E.useSkill(g, HUMAN, S.sel.key, S.extra.slot, key);
+        const skKey = S.sel && S.sel.key;
+        const targetSlot = S.extra.slot;
+        const r = E.useSkill(g, HUMAN, skKey, targetSlot, key);
         if (!r.ok) { flashMsg(r.msg); return; }
-        clearSel(); refresh(); announceSkill(r, S.sel && S.sel.key); checkOver(); return;
+        clearSel(); refresh(); announceSkill(r, skKey, targetSlot); checkOver(); return;
       }
     }
     if (S.mode === 'dong' && S.extra) {
       const a = u;
       if (a && a.owner === HUMAN && E.adjacent(S.extra.slot).includes(key)) {
-        const r = E.useSkill(g, HUMAN, S.sel.key, S.extra.slot, key);
+        const skKey = S.sel && S.sel.key;
+        const targetSlot = S.extra.slot;
+        const r = E.useSkill(g, HUMAN, skKey, targetSlot, key);
         if (!r.ok) { flashMsg(r.msg); return; }
-        clearSel(); refresh(); announceSkill(r, S.sel && S.sel.key); checkOver(); return;
+        clearSel(); refresh(); announceSkill(r, skKey, targetSlot); checkOver(); return;
       }
     }
     if (u) {
@@ -1160,17 +1530,17 @@
   }
 
   function startAI() {
-    clearTimeout(S.aiTimer);
+    ensureAiUi();
     if (!S.g || S.g.over || S.g.turn !== FOE) return;
-    S.aiTimer = setTimeout(() => {
-      if (!S.g || S.g.over || S.g.turn !== FOE) return;
-      const r = AI.step(S.g, FOE);
-      S.sel = null; S.mode = null; S.extra = null; S.pending = null;
-      refresh();
-      if (S.g.over) { setTimeout(showResult, 500); return; }
-      if (!r.done) startAI();
-      else if (S.g.turn === FOE) startAI();
-    }, 520);
+    if (S.aiTurn) return;
+    S.aiTurn = true;
+    S.aiStep = 0;
+    S.aiActions = [];
+    S.aiDeaths = [];
+    S.aiFast = false;
+    showAiBanner('庄家正在行动…');
+    renderAiTrack();
+    S.aiTimer = setTimeout(aiNextStep, 450);
   }
 
   /* ---------- 绑定 ---------- */
@@ -1185,6 +1555,8 @@
       clearSel(); refresh(); checkOver();
     });
     $('btnRules').addEventListener('click', showRules);
+    const pauseBtn = $('btnPause'); if (pauseBtn) pauseBtn.addEventListener('click', openPause);
+    $('season').addEventListener('click', e => { if (e.target.closest('[data-trick-start]')) startTrick(); });
     $('board').addEventListener('click', e => {
       const s = e.target.closest('.slot');
       if (s) onSlot(s.dataset.slot);
@@ -1238,7 +1610,7 @@
         if (e.target === sheet || e.target.closest('[data-sheet-close]')) closeSheets();
       });
     }
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheets(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeSheets(); if (S.paused) $('pauseResume') && $('pauseResume').click(); } });
     const csk = $('charSkills');
     if (csk) csk.addEventListener('click', e => {
       if (!S.g || S.g.over) return;
