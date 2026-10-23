@@ -343,7 +343,7 @@
   }
 
   function showResult(silent, metaMsg) {
-    const g = S.g; if (!g) return;
+    const g = S.g; if (!g || !g.over) return;
     closeSheets();
     const win = g.winner === HUMAN;
     const el = $('screens');
@@ -444,7 +444,11 @@
       <div class="metafoot">三魂：${meta ? aliveH.map(k => soulNames[k]).join('、') || '尽失' : '—'} · 七魄：${meta ? aliveP.map(k => posNames[k]).join('、') || '尽失' : '—'}</div>
     </div>`;
     el.classList.add('show');
-    if (!silent) document.dispatchEvent(new CustomEvent('bagua:result', { detail: { win, g } }));
+    // 三局两胜中只在本关系列结束时报一次结果，避免每小局都弹仙丹奖励打断
+    if (!silent && !g.resultAnnounced && (!series || seriesDone)) {
+      g.resultAnnounced = true;
+      document.dispatchEvent(new CustomEvent('bagua:result', { detail: { win, g, series, seriesDone } }));
+    }
     el.querySelectorAll('[data-loss]').forEach(b => b.onclick = () => {
       if (!meta) return;
       S.lossChoice = { kind: b.dataset.loss, picks: [] };
