@@ -14,19 +14,19 @@
 
   function freshSouls() {
     const out = {};
-    for (const k of HUN_KEYS) out[k] = { lost: false, pseudo: false, left: 0 };
+    for (const k of HUN_KEYS) out[k] = { lost: false, pseudo: false, left: 0, delay: 0, justLost: false };
     return out;
   }
   function freshPos() {
     const out = {};
-    for (const k of PO_KEYS) out[k] = { lost: false, pseudo: false, left: 0 };
+    for (const k of PO_KEYS) out[k] = { lost: false, pseudo: false, left: 0, delay: 0, justLost: false };
     return out;
   }
   function freshRun() {
     return {
       active: true, round: 1, locked: false, character: 'daotong',
       souls: freshSouls(), pos: freshPos(),
-      sacrifices: 0, usedSacrificeAttrs: [], lastAttrs: [],
+      sacrifices: 0, sacrificeCredits: 0, usedSacrificeAttrs: [], lastAttrs: [],
       cooldowns: {}, usedThisMatch: [],
       levelProgress: null,
       lastResult: null,
@@ -129,51 +129,52 @@
   function loseHun(key) {
     const s = cache.run.souls[key];
     if (!s || s.lost) return false;
-    s.lost = true; s.pseudo = false; s.left = cache.character === 'chier' ? 4 : 3;
+    s.lost = true; s.pseudo = false; s.left = cache.character === 'chier' ? 3 : 2; s.delay = cache.character === 'chier' ? 1 : 0; s.justLost = true;
     save();
     return true;
   }
   function losePos(key) {
     const p = cache.run.pos[key];
     if (!p || p.lost) return false;
-    p.lost = true; p.pseudo = false; p.left = cache.character === 'chier' ? 3 : 2;
+    p.lost = true; p.pseudo = false; p.left = cache.character === 'chier' ? 4 : 3; p.delay = cache.character === 'chier' ? 1 : 0; p.justLost = true;
     save();
     return true;
   }
   function gainPseudoPos(key) {
     const p = cache.run.pos[key];
     if (!p || !p.lost || p.pseudo) return false;
-    p.pseudo = true; p.left = 0;
+    p.pseudo = true; p.left = 0; p.delay = 0; p.justLost = false;
     save();
     return true;
   }
   function markPseudoPos(key) {
     const p = cache.run.pos[key];
     if (!p || p.pseudo) return false;
-    p.lost = true; p.pseudo = true; p.left = 0;
+    p.lost = true; p.pseudo = true; p.left = 0; p.delay = 0; p.justLost = false;
     save();
     return true;
   }
   function sacrifice(attr) {
-    if (!attr) return false;
-    const used = cache.run.usedSacrificeAttrs.filter(a => a === attr).length;
-    if (used >= 2) return false;
+    if (!attr || !canSacrifice(attr).ok) return false;
     cache.run.usedSacrificeAttrs.push(attr);
     cache.run.sacrifices++;
+    cache.run.sacrificeCredits = (cache.run.sacrificeCredits || 0) + 1;
     save();
     return true;
   }
   function makePseudoSoul(key) {
     const s = cache.run.souls[key];
-    if (!s || !s.lost || s.pseudo || cache.run.sacrifices < 2) return false;
-    s.pseudo = true; s.left = 0;
+    if (!s || !s.lost || s.pseudo || (cache.run.sacrificeCredits || 0) < 2) return false;
+    cache.run.sacrificeCredits -= 2;
+    s.pseudo = true; s.left = 0; s.delay = 0; s.justLost = false;
     save();
     return true;
   }
   function makePseudoPos(key) {
     const p = cache.run.pos[key];
-    if (!p || !p.lost || p.pseudo || cache.run.sacrifices < 1) return false;
-    p.pseudo = true; p.left = 0;
+    if (!p || !p.lost || p.pseudo || (cache.run.sacrificeCredits || 0) < 1) return false;
+    cache.run.sacrificeCredits -= 1;
+    p.pseudo = true; p.left = 0; p.delay = 0; p.justLost = false;
     save();
     return true;
   }
@@ -186,25 +187,53 @@
       poisonEvery2: false, forcedSeat: '',
     };
     const s = cache.run.souls;
-    if (s.tian && s.tian.lost && !s.tian.pseudo) mods.entranceAtkPct += s.tian.left > 0 ? .5 : -.5;
+    const phase = st => st.left > 0 ? 'good' : (st.delay > 0 ? 'delay' : 'bad');
+    if (s.tian && s.tian.lost && !s.tian.pseudo) {
+      const ph = phase(s.tian);
+      if (ph === 'good') mods.entranceAtkPct += .5;
+      else if (ph === 'bad') mods.entranceAtkPct -= .5;
+    }
     if (s.di && s.di.lost && !s.di.pseudo) {
-      if (s.di.left > 0) mods.extraAttackChance += .3;
-      else mods.missChance += .2;
+      const ph = phase(s.di);
+      if (ph === 'good') mods.extraAttackChance += .3;
+      else if (ph === 'bad') mods.missChance += .2;
     }
-    if (s.ren && s.ren.lost && !s.ren.pseudo) mods.entranceHpPct += s.ren.left > 0 ? .3 : -.3;
+    if (s.ren && s.ren.lost && !s.ren.pseudo) {
+      const ph = phase(s.ren);
+      if (ph === 'good') mods.entranceHpPct += .3;
+      else if (ph === 'bad') mods.entranceHpPct -= .3;
+    }
     const p = cache.run.pos;
-    if (p.shigou && p.shigou.lost && !p.shigou.pseudo) mods.shieldBonus += p.shigou.left > 0 ? 1 : -1;
-    if (p.fushi && p.fushi.lost && !p.fushi.pseudo) mods.regen += p.fushi.left > 0 ? 1 : -1;
-    if (p.queyin && p.queyin.lost && !p.queyin.pseudo) mods.forcedSeat = p.queyin.left > 0 ? 'N' : 'S';
-    if (p.tunzei && p.tunzei.lost && !p.tunzei.pseudo && p.tunzei.left > 0) mods.firstImmune = true;
-    if (p.feidu && p.feidu.lost && !p.feidu.pseudo) {
-      if (p.feidu.left > 0) mods.poisonOnHit = true;
-      else mods.poisonEvery2 = true;
+    if (p.shigou && p.shigou.lost && !p.shigou.pseudo) {
+      const ph = phase(p.shigou);
+      if (ph === 'good') mods.shieldBonus += 1;
+      else if (ph === 'bad') mods.shieldBonus -= 1;
     }
-    if (p.chuhui && p.chuhui.lost && !p.chuhui.pseudo) mods.damageDealt += p.chuhui.left > 0 ? 1 : -1;
+    if (p.fushi && p.fushi.lost && !p.fushi.pseudo) {
+      const ph = phase(p.fushi);
+      if (ph === 'good') mods.regen += 1;
+      else if (ph === 'bad') mods.regen -= 1;
+    }
+    if (p.queyin && p.queyin.lost && !p.queyin.pseudo) {
+      const ph = phase(p.queyin);
+      if (ph === 'good') mods.forcedSeat = 'N';
+      else if (ph === 'bad') mods.forcedSeat = 'S';
+    }
+    if (p.tunzei && p.tunzei.lost && !p.tunzei.pseudo && phase(p.tunzei) === 'good') mods.firstImmune = true;
+    if (p.feidu && p.feidu.lost && !p.feidu.pseudo) {
+      const ph = phase(p.feidu);
+      if (ph === 'good') mods.poisonOnHit = true;
+      else if (ph === 'bad') mods.poisonEvery2 = true;
+    }
+    if (p.chuhui && p.chuhui.lost && !p.chuhui.pseudo) {
+      const ph = phase(p.chuhui);
+      if (ph === 'good') mods.damageDealt += 1;
+      else if (ph === 'bad') mods.damageDealt -= 1;
+    }
     if (p.choufei && p.choufei.lost && !p.choufei.pseudo) {
-      const n = p.choufei.left > 0 ? 2 : -2;
-      mods.entranceAtk += n; mods.entranceHp += n;
+      const ph = phase(p.choufei);
+      if (ph === 'good') { mods.entranceAtk += 2; mods.entranceHp += 2; }
+      else if (ph === 'bad') { mods.entranceAtk -= 2; mods.entranceHp -= 2; }
     }
     if (cache.run.sacrifices >= 6) {
       mods.entranceAtkPct -= .2; mods.entranceHpPct -= .2;
@@ -242,6 +271,7 @@
     cache.run.souls = freshSouls();
     cache.run.pos = freshPos();
     cache.run.sacrifices = 0;
+    cache.run.sacrificeCredits = 0;
     cache.run.usedSacrificeAttrs = [];
     cache.run.lastAttrs = [];
     cache.run.cooldowns = {};
@@ -249,6 +279,27 @@
     cache.run.round = 1;
     save();
     return cache.run;
+  }
+  function clearJustLost() {
+    for (const k of HUN_KEYS) { const st = cache.run.souls[k]; if (st) st.justLost = false; }
+    for (const k of PO_KEYS) { const st = cache.run.pos[k]; if (st) st.justLost = false; }
+    save();
+  }
+
+  const MAX_SACRIFICES = 6; // 6 × 4 = 24 张
+  function sacrificeNeed() {
+    const lostH = HUN_KEYS.filter(k => cache.run.souls[k].lost && !cache.run.souls[k].pseudo).length;
+    const lostP = PO_KEYS.filter(k => cache.run.pos[k].lost && !cache.run.pos[k].pseudo).length;
+    return lostH * 2 + lostP;
+  }
+  function canSacrifice(attr) {
+    if (cache.run.sacrifices >= MAX_SACRIFICES) return { ok: false, reason: 'max' };
+    if ((cache.run.sacrificeCredits || 0) >= sacrificeNeed()) return { ok: false, reason: 'enough' };
+    if (attr) {
+      const used = cache.run.usedSacrificeAttrs.filter(a => a === attr).length;
+      if (used >= 2) return { ok: false, reason: 'attr' };
+    }
+    return { ok: true };
   }
   function levelProgress() { return cache.run.levelProgress || null; }
   function saveLevelProgress(data) {
@@ -273,14 +324,14 @@
   }
   function startNextRound() {
     cache.run.round++;
-    for (const k of HUN_KEYS) {
-      const s = cache.run.souls[k];
-      if (s.lost && !s.pseudo && s.left > 0) s.left--;
-    }
-    for (const k of PO_KEYS) {
-      const p = cache.run.pos[k];
-      if (p.lost && !p.pseudo && p.left > 0) p.left--;
-    }
+    const tick = st => {
+      if (!st.lost || st.pseudo) return;
+      if (st.justLost) { st.justLost = false; return; }
+      if (st.left > 0) st.left--;
+      else if (st.delay > 0) st.delay--;
+    };
+    for (const k of HUN_KEYS) tick(cache.run.souls[k]);
+    for (const k of PO_KEYS) tick(cache.run.pos[k]);
     save();
     return cache.run.round;
   }
@@ -295,7 +346,7 @@
     get, save, reload, unlocked, characterOpen, characterTag,
     selectCharacter, recordDivine, lockCharacter, unlockCharacter,
     campaign, levelUnlocked, clearLevel, cooldown, settleMatch, aliveHuns, alivePos, loseHun, losePos, gainPseudoPos, markPseudoPos, sacrifice, makePseudoSoul, makePseudoPos,
-    gameMods, failRun, startNextRound, resetLevelSouls, levelProgress, saveLevelProgress, clearLevelProgress, resetRun,
+    gameMods, failRun, startNextRound, resetLevelSouls, levelProgress, saveLevelProgress, clearLevelProgress, clearJustLost, MAX_SACRIFICES, sacrificeNeed, canSacrifice, resetRun,
     accountName, storageKey,
   };
 

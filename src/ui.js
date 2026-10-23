@@ -390,14 +390,15 @@
         <div><b>行动</b><p>场上每张牌每回合可攻击一次、获得一件装备、或移动到相邻空位，三选一。新落的牌当回合不能行动，但可以被攻击。</p></div>
         <div><b>攻击</b><p>空手/近战/盾牌打邻位，远程和长枪打距离 2。相生正常；克制方对被克方伤害 +1。无反击。</p></div>
         <div><b>技能</b><p>每回合最多 2 张且不能重复；每张技能整局 2 次。目标带对应属性/家庭成员时增强。</p></div>
+        <div><b>献祭</b><p>每次消耗一个属性的 4 张牌，获得 1 点祭力；本关最多献祭 24 张（6 次）。伪魂消耗 2 点祭力，伪魄消耗 1 点；祭力够炼化当前所有失魂失魄后不能再献祭。换关重置。</p></div>
         <div><b>角色</b><p>每关开始前选择，关内锁定；过关或本关失败后回到选关界面可重新选人。道童可求签/卜卦，清风可化身/分身，旁门可炼魂/夺魄，痴儿解锁后可选。</p></div>
         <div><b>关卡魂灯</b><p>进入一关时双方各点亮 3 魂 7 魄。每小局失败方失一魂或两魄，魂灯未熄就继续下一场；只剩一魂一魄时再败、三魂七魄被打空，或清风最后一魂化身阵亡，本关结束。人物与仙丹跨关保留，魂灯每关重置；退出未结束关卡会保存进度。</p></div>
         <div><b>小局胜负</b><p>一方 8 张人物牌全部失去，只算输掉这一小局；败方扣除魂灯后继续本关，直到一方魂灯熄灭。</p></div>
       </div>
       <div class="soulref">
         <div class="fghead">三魂七魄 · 失去后的效果</div>
-        <div class="soulrefgrid">${D.HUNS.map(h => { const e=SOUL_EFFECTS[h.key]; return `<div><b>${h.name}</b><span>缓冲：${e.good}</span><em>结束：${e.bad}</em></div>`; }).join('')}${D.POS.map(p => { const e=SOUL_EFFECTS[p.key]; return `<div><b>${p.name}</b><span>缓冲：${e.good}</span><em>结束：${e.bad}</em></div>`; }).join('')}</div>
-        <p class="soulrefnote">失魂缓冲 3 小局（痴儿 4），失魄缓冲 2 小局（痴儿 3）；缓冲结束后转为减益。伪魂/伪魄无效果。具体剩余小局可在右侧「魂灯」面板查看。</p>
+        <div class="soulrefgrid">${D.HUNS.map(h => { const e=SOUL_EFFECTS[h.key]; return `<div><b>${h.name}</b><span>缓冲 2 小局：${e.good}</span><em>之后：${e.bad}</em></div>`; }).join('')}${D.POS.map(p => { const e=SOUL_EFFECTS[p.key]; return `<div><b>${p.name}</b><span>缓冲 3 小局：${e.good}</span><em>之后：${e.bad}</em></div>`; }).join('')}</div>
+        <p class="soulrefnote">失魂缓冲 2 小局，失魄缓冲 3 小局；结束后转为减益。痴儿【痴傻】使缓冲各延长 1 小局，并让减益再延后 1 小局。伪魂/伪魄无效果。具体剩余小局可在右侧「魂灯」面板查看。</p>
       </div>
       <div class="fieldguide"><div class="fghead">场地 · 每轮开始</div>${FIELD_RULES.map(f => `<div class="fgrow" style="--c:${ELEMENTS[f.el].color}"><b>${ELEMENTS[f.el].name}</b><span>生：${f.gen}</span><span>同：${f.equal}</span><span>克：${f.over}</span></div>`).join('')}</div>
       <div class="skillref">${SKILLS.map(s => `<div><b>${s.name}</b><span>${s.desc}</span></div>`).join('')}</div>
@@ -509,11 +510,15 @@
       if (!win && S.metaSettled && !S.levelOver) {
         const lostRealH = Object.keys(run.souls).filter(k => run.souls[k].lost && !run.souls[k].pseudo);
         const lostRealP = Object.keys(run.pos).filter(k => run.pos[k].lost && !run.pos[k].pseudo);
-        const attrsLeft = D.ATTRS.filter(a => (!run.lastAttrs || !run.lastAttrs.length || run.lastAttrs.includes(a.key)) && run.usedSacrificeAttrs.filter(x => x === a.key).length < 2);
+        const need = meta.sacrificeNeed ? meta.sacrificeNeed() : (lostRealH.length * 2 + lostRealP.length);
+        const credits = run.sacrificeCredits || 0;
+        const maxSac = meta.MAX_SACRIFICES || 6;
+        const attrsLeft = D.ATTRS.filter(a => (!run.lastAttrs || !run.lastAttrs.length || run.lastAttrs.includes(a.key)) && (!meta.canSacrifice || meta.canSacrifice(a.key).ok));
         if (lostRealH.length || lostRealP.length) {
-          metaHtml += `<div class="metachoice sacbox"><div>本关献祭窗口：每次消耗一个属性的 4 张牌；伪魂需累计 2 次，伪魄需累计 1 次。换关后重置。</div>
-            <div class="metabtns sacattrs">${attrsLeft.map(a => `<button data-sacrifice="${a.key}">${a.sym} ${a.name}</button>`).join('') || '<span class="metamsg">四属性已献尽</span>'}</div>
-            <div class="metabtns">${lostRealH.map(k => `<button data-pseudo-hun="${k}" ${run.sacrifices < 2 ? 'disabled' : ''}>${SOUL_NAMES[k]} → 伪魂</button>`).join('')}${lostRealP.map(k => `<button data-pseudo-pos="${k}" ${run.sacrifices < 1 ? 'disabled' : ''}>${POS_NAMES[k]} → 伪魄</button>`).join('')}</div>
+          const sacState = credits >= need ? '祭力已够炼化当前所有失魂失魄，不能再献祭' : run.sacrifices >= maxSac ? '已献祭 24 张，达到上限' : `已献祭 ${run.sacrifices * 4}/24 张 · 可用祭力 ${credits} · 还需 ${Math.max(0, need - credits)} 次`;
+          metaHtml += `<div class="metachoice sacbox"><div>本关献祭窗口：每次消耗一个属性的 4 张牌，获得 1 点祭力；最高 24 张（6 次）。伪魂消耗 2 点祭力，伪魄消耗 1 点；祭力够炼化当前所有失魂失魄后停止。${sacState}</div>
+            <div class="metabtns sacattrs">${attrsLeft.map(a => `<button data-sacrifice="${a.key}">${a.sym} ${a.name}</button>`).join('')}</div>
+            <div class="metabtns">${lostRealH.map(k => `<button data-pseudo-hun="${k}" ${credits < 2 ? 'disabled' : ''}>${SOUL_NAMES[k]} → 伪魂（2 祭力）</button>`).join('')}${lostRealP.map(k => `<button data-pseudo-pos="${k}" ${credits < 1 ? 'disabled' : ''}>${POS_NAMES[k]} → 伪魄（1 祭力）</button>`).join('')}</div>
           </div>`;
         }
       }
@@ -826,6 +831,7 @@
     }
     const mods = window.Meta ? window.Meta.gameMods() : {};
     const preMeta = window.Meta;
+    if (preMeta && preMeta.clearJustLost) preMeta.clearJustLost();
     S.foeSouls = S.foeSouls || freshFoeSouls();
     S.matchPlayerPre = { h: preMeta ? preMeta.aliveHuns().length : 3, p: preMeta ? preMeta.alivePos().length : 7 };
     S.matchFoePre = { h: S.foeSouls.h.length, p: S.foeSouls.p.length };
@@ -1340,17 +1346,19 @@
       const st = run.souls[h.key] || {};
       const e = SOUL_EFFECTS[h.key] || { good: '—', bad: '—' };
       const cls = st.pseudo ? 'pseudo' : st.lost ? 'lost' : 'lit';
-      const state = st.pseudo ? '伪魂 · 无效果' : st.lost ? (st.left > 0 ? `缓冲 ${st.left} 小局` : '缓冲结束 · 减益中') : '未失 · 失后生效';
-      rows.push(`<div class="soulrow ${cls}"><b>${h.name}</b><span>${state}<em>${st.lost ? (st.left > 0 ? e.good : e.bad) : `失后：${e.good} → ${e.bad}`}</em></span></div>`);
+      const state = st.pseudo ? '伪魂 · 无效果' : st.lost ? (st.left > 0 ? `缓冲 ${st.left} 小局 · 增益` : st.delay > 0 ? `增益结束 · 减益延后 ${st.delay} 小局` : '减益生效') : '未失 · 失后生效';
+      const cur = st.pseudo ? '无效果' : st.lost ? (st.left > 0 ? e.good : st.delay > 0 ? '无效果（痴傻延迟）' : e.bad) : `失后 2 小局：${e.good} → 减益 ${e.bad}`;
+      rows.push(`<div class="soulrow ${cls}"><b>${h.name}</b><span>${state}<em>${cur}</em></span></div>`);
     }
     for (const p of (D.POS || [])) {
       const st = run.pos[p.key] || {};
       const e = SOUL_EFFECTS[p.key] || { good: '—', bad: '—' };
       const cls = st.pseudo ? 'pseudo' : st.lost ? 'lost' : 'lit';
-      const state = st.pseudo ? '伪魄 · 无效果' : st.lost ? (st.left > 0 ? `缓冲 ${st.left} 小局` : '缓冲结束 · 减益中') : '未失 · 失后生效';
-      rows.push(`<div class="soulrow ${cls}"><b>${p.name}</b><span>${state}<em>${st.lost ? (st.left > 0 ? e.good : e.bad) : `失后：${e.good} → ${e.bad}`}</em></span></div>`);
+      const state = st.pseudo ? '伪魄 · 无效果' : st.lost ? (st.left > 0 ? `缓冲 ${st.left} 小局 · 增益` : st.delay > 0 ? `增益结束 · 减益延后 ${st.delay} 小局` : '减益生效') : '未失 · 失后生效';
+      const cur = st.pseudo ? '无效果' : st.lost ? (st.left > 0 ? e.good : st.delay > 0 ? '无效果（痴傻延迟）' : e.bad) : `失后 3 小局：${e.good} → 减益 ${e.bad}`;
+      rows.push(`<div class="soulrow ${cls}"><b>${p.name}</b><span>${state}<em>${cur}</em></span></div>`);
     }
-    el.innerHTML = `<div class="soulcount">魂 ${meta.aliveHuns().length}/3 · 魄 ${meta.alivePos().length}/7</div>${rows.join('')}`;
+    el.innerHTML = `<div class="soulcount">魂 ${meta.aliveHuns().length}/3 · 魄 ${meta.alivePos().length}/7</div><div class="soulhint">失魂缓冲 2 小局，失魄缓冲 3 小局；痴儿各 +1，并让减益再延后 1 小局。</div>${rows.join('')}`;
   }
 
   function renderSeason() {

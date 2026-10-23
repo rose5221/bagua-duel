@@ -1971,3 +1971,8 @@ html body.px-sheet-open { overflow: hidden; }
   #app.mobile.pixel .soulrefgrid { grid-template-columns: 1fr; }
   #app.mobile.pixel .rulespanel .rulegrid p { font-size: 11px; }
 }
+
+#app.mobile.pixel .soulhint {
+  color: var(--px-paper2); font-size: 9.5px; line-height: 1.5;
+  padding: 2px 0 4px; border-bottom: 1px dashed #293335;
+}
