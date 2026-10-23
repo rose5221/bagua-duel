@@ -774,3 +774,57 @@ button.primary:hover { background: var(--fire); border-color: var(--fire); color
 .pouch.shape-mountain { clip-path: polygon(8% 76%,34% 18%,48% 42%,66% 0,92% 50%,100% 88%,50% 100%,0 88%); }
 .pouch.shape-night { clip-path: polygon(50% 0,78% 16%,92% 46%,82% 84%,50% 100%,18% 84%,8% 46%,22% 16%); }
 .pouch.shape-plum { clip-path: polygon(50% 0,72% 22%,100% 28%,86% 52%,100% 80%,64% 78%,50% 100%,36% 78%,0 80%,14% 52%,0 28%,28% 22%); }
+
+/* 锦囊插画版 */
+.pouch.artpouch {
+  clip-path: none !important;
+  min-height: 0;
+  padding: 6px 7px 8px;
+  gap: 2px;
+  background: #0d1213;
+  border: 2px solid #b9964c;
+  box-shadow: 3px 3px 0 #000;
+  color: #f7ead1;
+  overflow: hidden;
+}
+.pouch.artpouch::before,
+.pouch.artpouch::after,
+.pouch.artpouch .pouchcord { display: none !important; }
+.pouch.artpouch .pouchart {
+  display: block; width: 100%; height: 174px; object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 5px 0 rgba(0,0,0,.55));
+}
+.pouch.artpouch .pouchseal {
+  z-index: 3; top: 7px; right: 7px;
+  padding: 1px 4px; background: rgba(20,12,12,.72); border: 1px solid rgba(220,180,90,.5);
+  color: #f0d48c; font-size: 8px;
+}
+.pouch.artpouch .pouchname { margin-top: 2px; font-size: 15px; }
+.pouch.artpouch .pouchterm { font-size: 8px; }
+.pouch.artpouch .pouchtext { margin-top: 1px; font-size: 9px; line-height: 1.42; }
+.pouch.artpouch.trick { background: #0b0d0e; border-color: #e0be67; }
+.pouch.artpouch .trickmark { left: auto; right: 8px; top: 34px; background: rgba(12,9,10,.72); }
+@media (max-width: 600px) {
+  .pouch.artpouch { min-height: 0; }
+  .pouch.artpouch .pouchart { height: 190px; }
+  .pouch.artpouch .pouchseal { top: 6px; }
+}
+
+@media (max-width: 600px) {
+  .pouchrow { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+  .pouch.artpouch { padding: 4px 5px 6px; border-width: 2px; }
+  .pouch.artpouch .pouchart { height: 112px; }
+  .pouch.artpouch .pouchname { font-size: 11px; line-height: 1.2; }
+  .pouch.artpouch .pouchterm { font-size: 7px; }
+  .pouch.artpouch .pouchtext {
+    font-size: 7px; line-height: 1.35; max-height: 48px; overflow: hidden;
+    display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical;
+  }
+  .pouch.artpouch .pouchseal { font-size: 7px; padding: 0 2px; top: 4px; right: 4px; }
+  .pouch.artpouch .trickmark { width: 20px; height: 20px; font-size: 11px; top: 24px; right: 5px; }
+}
+@media (max-width: 370px) {
+  .pouch.artpouch .pouchart { height: 92px; }
+  .pouch.artpouch .pouchtext { -webkit-line-clamp: 4; max-height: 39px; }
+}

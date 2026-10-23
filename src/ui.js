@@ -531,9 +531,10 @@
       <div class="kick">天时 · ${seasonName}</div>
       <h2>三囊择一</h2>
       <p class="blesslead">本局${seasonName}季，选一枚锦囊带入对局。${p.options.some(x => x.kind === 'trick') ? '有一枚黑金绳妙计混在其中。' : '庄家也会同时开囊。'}</p>
-      <div class="pouchrow">${p.options.map((o, i) => `<button class="pouch ${o.kind === 'trick' ? 'trick' : ''} shape-${o.shape || 'gourd'}" data-blessing="${i}">
-        <span class="pouchcord"></span><span class="pouchseal">${o.term || ''}</span>
-        <span class="pouchname">${o.name}</span><span class="pouchterm">${o.kind === 'trick' ? '妙计' : o.term}</span>
+      <div class="pouchrow">${p.options.map((o, i) => `<button class="pouch artpouch ${o.kind === 'trick' ? 'trick' : ''}" data-blessing="${i}">
+        <img class="pouchart" src="${o.art || ''}" alt="${o.name}" loading="lazy">
+        <span class="pouchseal">${o.term || ''}</span>
+        <span class="pouchname">${o.name}</span><span class="pouchterm">${o.kind === 'trick' ? '妙计 · 本季一次' : o.term}</span>
         <span class="pouchtext">${o.text || ''}</span>
         ${o.kind === 'trick' ? '<i class="trickmark">妙</i>' : ''}
       </button>`).join('')}</div>

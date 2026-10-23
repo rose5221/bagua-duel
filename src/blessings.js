@@ -109,6 +109,19 @@
       desc: '蝉蜕留在枝上，真人已经走了。' },
   };
 
+  const SEASON_ART = {
+    spring: 'assets/pixel/pouches/spring_peach.png?v=20261023g',
+    summer: 'assets/pixel/pouches/summer_lotus.png?v=20261023g',
+    autumn: 'assets/pixel/pouches/autumn_chrys.png?v=20261023g',
+    winter: 'assets/pixel/pouches/winter_snow.png?v=20261023g',
+  };
+  const TRICK_ART = {
+    spring: 'assets/pixel/pouches/trick_spring.png?v=20261023g',
+    summer: 'assets/pixel/pouches/trick_summer.png?v=20261023g',
+    autumn: 'assets/pixel/pouches/trick_autumn.png?v=20261023g',
+    winter: 'assets/pixel/pouches/trick_winter.png?v=20261023g',
+  };
+
   const BY_KEY = {};
   for (const b of LIST) BY_KEY[b.key] = b;
   for (const k of ORDER) BY_KEY[TRICKS[k].key] = TRICKS[k];
@@ -122,21 +135,24 @@
   // 每季 3 选 1；独立 1/6 机会以妙计替换其中一枚。
   function draw(season, allowTrick) {
     const p = shuffle(pool(season));
-    const options = p.slice(0, 3).map(x => Object.assign({ kind: 'bless' }, x));
+    const options = p.slice(0, 3).map(x => Object.assign({ kind: 'bless', art: SEASON_ART[season] }, x));
     let trick = false;
     if (allowTrick !== false && Math.random() < 1 / 6) {
-      const t = Object.assign({}, TRICKS[season]);
+      const t = Object.assign({}, TRICKS[season], { art: TRICK_ART[season] });
       options[Math.floor(Math.random() * options.length)] = t;
       trick = true;
     }
     // 至少有一枚“逆境/稳定”选项；否则把最后一枚换成该季最稳的一张。
     const hasAnchor = options.some(x => x.cat === 'comeback' || x.cat === 'steady' || x.kind === 'trick');
-    if (!hasAnchor) options[2] = Object.assign({ kind: 'bless' }, p.find(x => x.cat === 'comeback') || p.find(x => x.cat === 'steady') || p[0]);
+    if (!hasAnchor) {
+      const fallback = p.find(x => x.cat === 'comeback') || p.find(x => x.cat === 'steady') || p[0];
+      options[2] = Object.assign({ kind: 'bless', art: SEASON_ART[season] }, fallback);
+    }
     return { season, options, trick };
   }
 
   window.Blessings = {
-    SEASONS, ORDER, LIST, TRICKS, BY_KEY,
+    SEASONS, ORDER, LIST, TRICKS, BY_KEY, SEASON_ART, TRICK_ART,
     seasonForRound, startMonth, seasonName, pool, draw,
   };
 })();

@@ -1597,3 +1597,38 @@ html body.px-sheet-open { overflow: hidden; }
 #app.mobile.pixel .leveldesc > div em { color: var(--px-gold); }
 #app.mobile.pixel .levelbadge { color: var(--px-gold); font-family: 'FusionPixel', 'FusionPixel10', monospace; }
 #app.mobile.pixel .screens .pausepanel h2 { color: var(--px-paper); }
+
+/* 锦囊插画 · 像素版 */
+#app.mobile.pixel .pouch.artpouch {
+  background: #0b1011;
+  border: 2px solid var(--px-gold2);
+  box-shadow: 3px 3px 0 #000, inset 0 0 0 1px rgba(208,174,88,.22);
+  font-family: 'FusionPixel', 'FusionPixel10', monospace;
+}
+#app.mobile.pixel .pouch.artpouch .pouchart { filter: drop-shadow(0 4px 0 rgba(0,0,0,.7)) contrast(1.04); }
+#app.mobile.pixel .pouch.artpouch .pouchname { color: var(--px-paper); font-size: 14px; }
+#app.mobile.pixel .pouch.artpouch .pouchterm { color: var(--px-gold); }
+#app.mobile.pixel .pouch.artpouch .pouchtext { color: var(--px-paper2); }
+#app.mobile.pixel .pouch.artpouch.trick { border-color: #e0be67; background: #090b0c; }
+#app.mobile.pixel .pouch.artpouch.picked { border-color: var(--px-gold); box-shadow: 0 0 0 2px var(--px-gold), 0 0 28px rgba(208,174,88,.4), 3px 3px 0 #000; }
+
+/* 卡牌名字统一为立体白字 + 黑描边 */
+#app.mobile.pixel .unit .uname,
+#app.mobile.pixel .hand .htile .hname,
+#app.mobile.pixel .pouch.artpouch .pouchname {
+  color: #fff9ea !important;
+  font-family: 'FusionPixel', 'FusionPixel10', monospace !important;
+  font-weight: normal !important;
+  letter-spacing: .04em;
+  -webkit-text-stroke: .35px #08090a;
+  text-shadow:
+    -1px -1px 0 #08090a, 1px -1px 0 #08090a,
+    -1px 1px 0 #08090a, 1px 1px 0 #08090a,
+    0 -1px 0 #08090a, 0 1px 0 #08090a,
+    -1px 0 0 #08090a, 1px 0 0 #08090a,
+    0 2px 0 #08090a, 1px 3px 0 #08090a,
+    0 0 4px rgba(0,0,0,.75);
+}
+#app.mobile.pixel .unit .uname { font-size: 7px !important; line-height: 1.15; }
+#app.mobile.pixel .pouch.artpouch .pouchname { font-size: 13px !important; text-shadow: -1px -1px 0 #08090a, 1px 1px 0 #08090a, 0 2px 0 #08090a, 0 0 4px #000; }
+#app.mobile.pixel .unit.guarding .uname { font-size: 6.5px !important; }
