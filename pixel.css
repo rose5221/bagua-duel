@@ -1873,3 +1873,56 @@ html body.px-sheet-open { overflow: hidden; }
 /* 结算面板数值在深色像素面板上要可读 */
 #app.mobile.pixel .screens .resultrow b { color: var(--px-gold) !important; }
 #app.mobile.pixel .screens .resultrow span { color: var(--px-paper) !important; font-family: 'FusionPixel', 'FusionPixel10', monospace !important; }
+
+/* 魂灯效果面板 */
+#app.mobile.pixel .soulpanel {
+  display: flex; flex-direction: column; gap: 3px;
+  border: 2px solid var(--px-stone2);
+  background: #0b1011;
+  padding: 6px 7px;
+}
+#app.mobile.pixel .soulpanel .panelhead { border-bottom: 1px solid var(--px-stone2); padding-bottom: 4px; }
+#app.mobile.pixel .soulcount { color: var(--px-gold); font-size: 10px; padding: 2px 0 3px; }
+#app.mobile.pixel .soullist { display: flex; flex-direction: column; }
+#app.mobile.pixel .soulrow {
+  display: grid; grid-template-columns: 42px minmax(0, 1fr);
+  gap: 5px; padding: 4px 0; border-bottom: 1px dashed #293335;
+}
+#app.mobile.pixel .soulrow b {
+  color: var(--px-paper); font-size: 10px; font-weight: normal;
+}
+#app.mobile.pixel .soulrow span { display: flex; flex-direction: column; gap: 1px; font-size: 9px; color: var(--px-paper2); line-height: 1.35; }
+#app.mobile.pixel .soulrow em { font-style: normal; color: var(--px-gold); }
+#app.mobile.pixel .soulrow.lost b { color: #ff9c8a; }
+#app.mobile.pixel .soulrow.lost em { color: #ffbfae; }
+#app.mobile.pixel .soulrow.pseudo { opacity: .48; }
+
+/* 关卡进度确认 */
+.px-confirm {
+  position: fixed; inset: 0; z-index: 90;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px; background: rgba(0,0,0,.78);
+}
+.px-confirm .panel { width: min(520px, 100%); }
+.px-confirm .blesslead { font-size: 12px; line-height: 1.7; color: var(--px-paper2); }
+#app.mobile.pixel .px-confirm .panel { background: #0d1213; border: 3px solid var(--px-stone2); }
+#app.mobile.pixel .px-confirm h2 { color: var(--px-paper); }
+
+/* 关卡进度确认框（挂在 body 上，不能依赖 #app 选择器） */
+.px-confirm .panel {
+  background: #0d1213; color: var(--px-paper);
+  border: 3px solid var(--px-stone2); box-shadow: 6px 6px 0 #000;
+}
+.px-confirm .kick { color: var(--px-gold); }
+.px-confirm h2 { color: var(--px-paper); }
+.px-confirm .blesslead { color: var(--px-paper2); }
+.px-confirm .startbtns button {
+  background: #142022; color: var(--px-paper);
+  border: 2px solid var(--px-stone2);
+  padding: 7px 12px; font-family: 'FusionPixel', 'FusionPixel10', monospace;
+  box-shadow: 2px 2px 0 #000; cursor: pointer;
+}
+.px-confirm .startbtns button.primary {
+  background: var(--px-gold); color: #101312; border-color: var(--px-gold);
+}
+.px-confirm .startbtns button:hover { border-color: var(--px-paper); }

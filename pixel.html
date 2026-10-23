@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
   <title>八卦弈魂 · 像素</title>
-  <link rel="stylesheet" href="styles.css?v=20261023y">
-  <link rel="stylesheet" href="mobile.css?v=20261023y">
-  <link rel="stylesheet" href="pixel.css?v=20261023y">
+  <link rel="stylesheet" href="styles.css?v=20261023aa">
+  <link rel="stylesheet" href="mobile.css?v=20261023aa">
+  <link rel="stylesheet" href="pixel.css?v=20261023aa">
 </head>
 <body class="pixelbody">
   <div id="app" class="mobile pixel">
@@ -40,7 +40,7 @@
       </aside>
 
       <section class="arena">
-        <img class="sc-mountain" src="assets/pixel/scene/mountain.png?v=20261023y" alt="">
+        <img class="sc-mountain" src="assets/pixel/scene/mountain.png?v=20261023aa" alt="">
         <div class="scenery" aria-hidden="true">
           <img class="sc-dao" src="assets/pixel/scene/dao.png" alt="">
           <img class="sc-pine" src="assets/pixel/scene/pine.png" alt="">
@@ -79,6 +79,10 @@
       <aside class="side right">
         <section class="panelgroup pg-season">
           <div class="season" id="season"></div>
+          <div class="mpanel soulpanel">
+            <div class="panelhead">魂灯 · 失魂失魄效果</div>
+            <div class="soullist" id="soulList"></div>
+          </div>
         </section>
         <section class="panelgroup pg-log">
           <button id="btnLog" class="logjump">查看牌桌记录</button>
@@ -130,14 +134,14 @@
   </div>
 
   <audio id="bgm" loop preload="auto">
-    <source src="assets/audio/tiandi.mp3" type="audio/mpeg">
+    <source src="assets/audio/tiandi.mp3?v=20261023aa" type="audio/mpeg">
     <source src="assets/audio/deploy-ambient.m4a" type="audio/mp4">
   </audio>
 
-  <script src="src/data.js?v=20261023y"></script>
-  <script src="src/meta.js?v=20261023y"></script>
-  <script src="src/blessings.js?v=20261023y"></script>
-  <script src="src/campaign.js?v=20261023y"></script>
+  <script src="src/data.js?v=20261023aa"></script>
+  <script src="src/meta.js?v=20261023aa"></script>
+  <script src="src/blessings.js?v=20261023aa"></script>
+  <script src="src/campaign.js?v=20261023aa"></script>
   <script src="src/weapon-skins.js"></script>
   <script>
     // 像素版使用单独的像素卡图，不改动原版资源
@@ -147,9 +151,9 @@
         data-cid="${card.id}" onerror="this.onerror=null;window.DATA.portraitFallback(this)">`;
     };
   </script>
-  <script src="src/engine.js?v=20261023y"></script>
-  <script src="src/ai.js?v=20261023y"></script>
-  <script src="src/ui.js?v=20261023y"></script>
+  <script src="src/engine.js?v=20261023aa"></script>
+  <script src="src/ai.js?v=20261023aa"></script>
+  <script src="src/ui.js?v=20261023aa"></script>
   <script src="src/pixel-sfx.js"></script>
   <script src="src/elixirs.js"></script>
   <script src="src/pixel-account.js"></script>

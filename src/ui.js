@@ -12,6 +12,19 @@
   const SOUL_NAMES = { tian: '天魂', di: '地魂', ren: '人魂' };
   const POS_NAMES = { shigou: '尸狗', fushi: '伏矢', queyin: '雀阴', tunzei: '吞贼', feidu: '非毒', chuhui: '除秽', choufei: '臭肺' };
   const freshFoeSouls = () => ({ h: (D.HUNS || []).map(x => x.key), p: (D.POS || []).map(x => x.key) });
+  const SOUL_EFFECTS = {
+    tian: { good: '己方入场攻 +50%', bad: '己方入场攻 -50%' },
+    di: { good: '攻击 30% 追打一次', bad: '攻击 20% 落空' },
+    ren: { good: '己方入场血 +30%', bad: '己方入场血 -30%' },
+    shigou: { good: '己方全体 +1 护盾', bad: '己方全体 -1 护盾' },
+    fushi: { good: '每轮全体回复 1 血', bad: '每轮全体 -1 血' },
+    queyin: { good: '固定坐北朝南', bad: '固定坐南朝北' },
+    tunzei: { good: '首张入场免疫一次伤害', bad: '无额外效果' },
+    feidu: { good: '攻击命中附带 1 层剧毒', bad: '每 2 轮己方全体 +1 层剧毒' },
+    chuhui: { good: '攻击伤害 +1', bad: '攻击伤害 -1' },
+    choufei: { good: '入场 +2 攻 / +2 血', bad: '入场 -2 攻 / -2 血' },
+  };
+
   const playerLife = () => ({ h: window.Meta ? window.Meta.aliveHuns() : [], p: window.Meta ? window.Meta.alivePos() : [] });
   const foeLife = () => S.foeSouls || (S.foeSouls = freshFoeSouls());
 
@@ -146,13 +159,17 @@
     const meta = window.Meta;
     const charOpen = c => meta ? meta.characterOpen(c.key) : c.open;
     const charTag = c => meta ? meta.characterTag(c.key) : c.tag;
+    let save = meta ? meta.levelProgress() : null;
     if (meta) {
       if (!meta.get().run.active) meta.resetRun();
-      // 人物是局外选择：选关界面开放换人，进入关卡后再锁定；魂灯每关重置
       if (meta.get().run.locked) meta.unlockCharacter();
-      if (meta.resetLevelSouls) meta.resetLevelSouls();
+      if (save && (!meta.levelUnlocked(save.level) || !meta.characterOpen(save.character))) {
+        meta.clearLevelProgress(); save = null;
+      }
+      if (!save) meta.resetLevelSouls();
       const currentRun = meta.get().run;
-      if (currentRun.locked && currentRun.character && meta.characterOpen(currentRun.character)) S.character = currentRun.character;
+      if (save && meta.characterOpen(save.character)) S.character = save.character;
+      else if (currentRun.locked && currentRun.character && meta.characterOpen(currentRun.character)) S.character = currentRun.character;
       else {
         const saved = meta.get().character;
         if (meta.characterOpen(saved)) S.character = saved;
@@ -166,10 +183,14 @@
     const camp = window.Campaign;
     const prog = meta ? meta.campaign() : { unlocked: 1, cleared: [] };
     if (camp) {
+      if (save && save.active) S.level = Math.max(0, Math.min(save.level, camp.count - 1));
       S.level = Math.max(0, Math.min(S.level, camp.count - 1));
       if (!meta || !meta.levelUnlocked(S.level)) S.level = Math.min(prog.unlocked - 1, camp.count - 1);
       S.difficulty = camp.get(S.level).difficulty;
     }
+    const canResume = !!(save && save.active && save.level === S.level && save.character === S.character);
+    const saveH = meta ? meta.aliveHuns().length : 3;
+    const saveP = meta ? meta.alivePos().length : 7;
     const cur = camp ? camp.get(S.level) : null;
     el.innerHTML = `<div class="panel startpanel">
       <div class="kick">BAGUA DUEL · 64</div>
@@ -189,7 +210,7 @@
         return `<button class="charpick-btn ${S.character === c.key ? 'sel' : ''}" data-char="${c.key}" ${open && !lockedOut ? '' : 'disabled'}><b>${c.name}</b><span>${c.desc}</span><i>${tag}</i></button>`;
       }).join('')}</div>
       <div class="charstreak">${locked ? '角色已锁定 · 本关内不可更换' : chierOpen ? '痴儿已解锁 · 可在上方直接选择' : streak ? `道童老阴连续 ${streak}/3 · 再成一次解锁痴儿` : '痴儿：道童卜卦连续三次老阴后解锁'}</div>
-      <div class="runmeta">本关魂灯每关重置 · 人物与仙丹跨关保留 · ${cur ? cur.num : ''}</div>
+      <div class="runmeta">${canResume ? `第 ${save.level + 1} 关进度已保存 · 第 ${save.match} 场 · 你 ${saveH}魂${saveP}魄 / 庄 ${save.foe.h.length}魂${save.foe.p.length}魄` : '本关魂灯每关重置 · 人物与仙丹跨关保留'} · ${cur ? cur.num : ''}</div>
       <div class="levelhead">剧情关卡</div>
       <div class="levelpick">${camp ? camp.LEVELS.map((lv, i) => {
         const open = meta ? meta.levelUnlocked(i) : i === 0;
@@ -197,23 +218,59 @@
         return `<button class="levelbtn ${S.level === i ? 'sel' : ''} ${cleared ? 'cleared' : ''}" data-level="${i}" ${open ? '' : 'disabled'}><b>${lv.num}</b><span>${lv.name}</span><i>${cleared ? '已过' : open ? lv.boss : '未解锁'}</i></button>`;
       }).join('') : ''}</div>
       ${cur ? `<div class="leveldesc">${cur.taiji ? '<div class="taijiboss">☯</div>' : (cur.portrait ? D.portraitHtml(D.CARDS[cur.portrait], 44, 58) : '')}<div><b>${cur.num} · ${cur.name} · ${cur.boss}</b><span>${cur.story}</span><em>${cur.desc} · 本关双方各 3 魂 7 魄，小局胜败会削减魂灯，打空者败</em></div></div>` : ''}
-      <div class="startbtns"><button class="primary" id="btnStart">${cur ? '入座 · ' + cur.num : '入座'}</button><button id="btnRules2">规则</button></div>
+      <div class="startbtns"><button class="primary" id="btnStart">${canResume ? '继续本关 · ' + cur.num : cur ? '入座 · ' + cur.num : '入座'}</button><button id="btnRules2">规则</button></div>
       <div class="startfoot">${chierOpen ? '四角色均可选' : '坐北朝南先手 · 道童 / 清风 / 旁门可选；痴儿连续三次老阴解锁'} · 每关开始前选人物 · 关内锁定 · 过关/失守后可换角色 · 随机 2 属性 × 4 张出战</div>
     </div>`;
     el.classList.add('show');
     el.querySelectorAll('.levelbtn').forEach(b => b.onclick = () => {
       if (b.disabled) return;
-      S.level = Number(b.dataset.level);
+      const target = Number(b.dataset.level);
+      const active = meta && meta.levelProgress();
+      if (active && active.active && active.level !== target) {
+        askConfirm(`第 ${active.level + 1} 关还在进行中（第 ${active.match} 场）。进入第 ${target + 1} 关会放弃当前关卡进度，双方魂灯恢复 3 魂 7 魄，从第 1 场重新开始。`, () => {
+          discardLevelProgress();
+          S.level = target;
+          if (camp) S.difficulty = camp.get(S.level).difficulty;
+          showStart();
+        });
+        return;
+      }
+      S.level = target;
       if (camp) S.difficulty = camp.get(S.level).difficulty;
       showStart();
     });
     el.querySelectorAll('.charpick-btn').forEach(b => b.onclick = () => {
       if (b.disabled) return;
-      S.character = b.dataset.char;
+      const target = b.dataset.char;
+      const active = meta && meta.levelProgress();
+      if (active && active.active && active.character !== target) {
+        askConfirm(`当前第 ${active.level + 1} 关进度会保留在当前人物身上。切换人物会放弃本关进度，双方魂灯恢复 3 魂 7 魄，从第 1 场重新开始。`, () => {
+          discardLevelProgress();
+          S.character = target;
+          if (meta) meta.selectCharacter(target);
+          showStart();
+        });
+        return;
+      }
+      S.character = target;
       if (meta) meta.selectCharacter(S.character);
       el.querySelectorAll('.charpick-btn').forEach(x => x.classList.toggle('sel', x === b));
     });
     $('btnStart').onclick = () => {
+      const active = meta && meta.levelProgress();
+      if (active && active.active) {
+        if (active.level === S.level && active.character === S.character) {
+          el.classList.remove('show');
+          resumeLevel(active);
+          return;
+        }
+        askConfirm(`当前第 ${active.level + 1} 关进度尚未结束。进入新关卡会放弃进度，双方魂灯恢复 3 魂 7 魄，从第 1 场重新开始。`, () => {
+          discardLevelProgress();
+          el.classList.remove('show');
+          startLevel();
+        });
+        return;
+      }
       el.classList.remove('show');
       startLevel();
     };
@@ -398,6 +455,10 @@
     if (levelLost) { S.levelOver = true; S.levelWon = false; }
     if (levelWon) { S.levelOver = true; S.levelWon = true; }
     if (!S.levelOver) S.levelWon = false;
+    if (meta) {
+      if (S.levelOver) meta.clearLevelProgress();
+      else saveCurrentLevel();
+    }
 
     // 本关胜利才清关；本关失败可重试，不再触发局外全局失败
     if (levelWon && level && meta && !S.campaignCleared) {
@@ -548,30 +609,82 @@
         S.bossLossApplied = false;
         S.metaSettled = false;
         S.lossChoice = null;
+        saveCurrentLevel();
         S.g = null;
         beginSeason();
         return;
       }
       if (levelWon && !isFinal) S.level = Math.min(S.level + 1, camp.count - 1);
+      if (meta) { meta.clearLevelProgress(); meta.unlockCharacter(); }
       S.g = null;
       S.levelOver = false;
       S.levelWon = false;
-      if (meta) meta.unlockCharacter();
       showStart();
     };
     const menu = $('btnMenu');
     if (menu) menu.onclick = () => {
       el.classList.remove('show');
+      if (meta && !S.levelOver) saveCurrentLevel();
       S.g = null; S.sel = null; S.levelOver = false; S.levelWon = false;
       if (meta) meta.unlockCharacter();
       showStart();
     };
   }
 
+  function saveCurrentLevel() {
+    if (!S.g || S.levelOver || !window.Meta) return;
+    window.Meta.saveLevelProgress({
+      level: S.level, character: S.character, match: S.levelMatch, foe: S.foeSouls,
+    });
+  }
+
+  function discardLevelProgress() {
+    const meta = window.Meta;
+    if (!meta) return;
+    meta.clearLevelProgress();
+    meta.resetLevelSouls();
+  }
+
+  function resumeLevel(save) {
+    const meta = window.Meta;
+    S.level = save.level;
+    S.character = save.character;
+    S.foeSouls = {
+      h: Array.isArray(save.foe && save.foe.h) ? save.foe.h.slice() : (D.HUNS || []).map(x => x.key),
+      p: Array.isArray(save.foe && save.foe.p) ? save.foe.p.slice() : (D.POS || []).map(x => x.key),
+    };
+    S.levelMatch = Math.max(1, save.match || 1);
+    S.levelOver = false;
+    S.levelWon = false;
+    S.bossLossApplied = false;
+    S.g = null;
+    S.seasonBlessing = null;
+    S.matchPlayerPre = { h: meta ? meta.aliveHuns().length : 3, p: meta ? meta.alivePos().length : 7 };
+    S.matchFoePre = { h: S.foeSouls.h.length, p: S.foeSouls.p.length };
+    if (meta) meta.lockCharacter(S.character);
+    beginSeason();
+  }
+
+  function askConfirm(text, onOk) {
+    document.querySelector('.px-confirm')?.remove();
+    const wrap = document.createElement('div');
+    wrap.className = 'px-confirm';
+    wrap.innerHTML = `<div class="panel confirmpanel">
+      <div class="kick">关卡进度</div>
+      <h2>重新开始本关？</h2>
+      <p class="blesslead">${text}</p>
+      <div class="startbtns"><button class="primary" id="pxConfirmOk">确定重新开始</button><button id="pxConfirmCancel">取消</button></div>
+    </div>`;
+    document.body.appendChild(wrap);
+    const close = () => wrap.remove();
+    wrap.querySelector('#pxConfirmCancel').onclick = close;
+    wrap.querySelector('#pxConfirmOk').onclick = () => { close(); onOk(); };
+  }
+
   function startLevel() {
     const meta = window.Meta;
     // 三魂七魄属于本关内部，换关重置；人物、仙丹、关卡进度保留
-    if (meta) { meta.resetLevelSouls(); meta.lockCharacter(S.character); }
+    if (meta) { meta.clearLevelProgress(); meta.resetLevelSouls(); meta.lockCharacter(S.character); }
     S.foeSouls = freshFoeSouls();
     S.levelMatch = 1;
     S.levelOver = false;
@@ -680,6 +793,7 @@
       el.classList.remove('show'); S.paused = false;
       clearTimeout(S.aiTimer); S.aiTurn = false;
       if (S.g && window.Meta) window.Meta.settleMatch(S.g.summoned || []);
+      if (S.g && !S.levelOver) saveCurrentLevel();
       S.g = null; S.seasonBlessing = null;
       showStart();
     };
@@ -730,6 +844,7 @@
       window.Meta.get().run.lastAttrs = S.g.players[0].attrs.slice();
       window.Meta.save();
     }
+    saveCurrentLevel();
     S.prep = null;
     $('screens').classList.remove('show');
     clearTimeout(S.aiTimer);
@@ -749,7 +864,7 @@
     if (!S.g) return;
     renderSeatbar(); renderStatus(); renderOppPublic(); renderMyFigure(); renderInfo();
     renderWeapons(); renderSkills(); renderCharacter(); renderBoard(); renderHand(); renderPreview();
-    renderPrompt(); renderSeason(); renderHistory(); renderQuickbar();
+    renderPrompt(); renderSeason(); renderSoulPanel(); renderHistory(); renderQuickbar();
     maybeOfferSeasonChange();
     $('btnEnd').disabled = !(S.g.turn === HUMAN && !S.g.over);
   }
@@ -1206,6 +1321,30 @@
     if (S.mode === 'dong') { el.innerHTML = '动：点一个相邻友军获得额外行动'; return; }
     const board = E.ownUnits(g, HUMAN).length;
     el.innerHTML = `落子 1 张 · 场上每张牌行动一次 · 技能 ${g.skillsLeft}/2 <span class="sub">场上 ${board}/${E.BOARD_MAX}</span>`;
+  }
+
+  function renderSoulPanel() {
+    const el = $('soulList');
+    if (!el) return;
+    const meta = window.Meta;
+    if (!meta || !S.g) { el.innerHTML = '<div class="emptyhint">进入关卡后显示魂灯效果。</div>'; return; }
+    const run = meta.get().run;
+    const rows = [];
+    for (const h of (D.HUNS || [])) {
+      const st = run.souls[h.key] || {};
+      const e = SOUL_EFFECTS[h.key] || { good: '—', bad: '—' };
+      const cls = st.pseudo ? 'pseudo' : st.lost ? 'lost' : 'lit';
+      const state = st.pseudo ? '伪魂 · 无效果' : st.lost ? (st.left > 0 ? `缓冲 ${st.left} 小局` : '缓冲结束 · 减益中') : '未失 · 失后生效';
+      rows.push(`<div class="soulrow ${cls}"><b>${h.name}</b><span>${state}<em>${st.lost ? (st.left > 0 ? e.good : e.bad) : `失后：${e.good} → ${e.bad}`}</em></span></div>`);
+    }
+    for (const p of (D.POS || [])) {
+      const st = run.pos[p.key] || {};
+      const e = SOUL_EFFECTS[p.key] || { good: '—', bad: '—' };
+      const cls = st.pseudo ? 'pseudo' : st.lost ? 'lost' : 'lit';
+      const state = st.pseudo ? '伪魄 · 无效果' : st.lost ? (st.left > 0 ? `缓冲 ${st.left} 小局` : '缓冲结束 · 减益中') : '未失 · 失后生效';
+      rows.push(`<div class="soulrow ${cls}"><b>${p.name}</b><span>${state}<em>${st.lost ? (st.left > 0 ? e.good : e.bad) : `失后：${e.good} → ${e.bad}`}</em></span></div>`);
+    }
+    el.innerHTML = `<div class="soulcount">魂 ${meta.aliveHuns().length}/3 · 魄 ${meta.alivePos().length}/7</div>${rows.join('')}`;
   }
 
   function renderSeason() {
@@ -1783,6 +1922,7 @@
       });
       setPanel('hand');
     }
+    window.addEventListener('beforeunload', () => { if (S.g && !S.levelOver) saveCurrentLevel(); });
     if (new URLSearchParams(location.search).has('debug')) window.__bagua = { S, startGame, showResult, showPrep, refresh, Engine: E };
     showStart();
   }

@@ -28,6 +28,7 @@
       souls: freshSouls(), pos: freshPos(),
       sacrifices: 0, usedSacrificeAttrs: [], lastAttrs: [],
       cooldowns: {}, usedThisMatch: [],
+      levelProgress: null,
       lastResult: null,
     };
   }
@@ -249,6 +250,27 @@
     save();
     return cache.run;
   }
+  function levelProgress() { return cache.run.levelProgress || null; }
+  function saveLevelProgress(data) {
+    if (!data) return null;
+    cache.run.levelProgress = {
+      active: true,
+      level: Number(data.level) || 0,
+      character: data.character || cache.character,
+      match: Math.max(1, Number(data.match) || 1),
+      foe: {
+        h: Array.isArray(data.foe && data.foe.h) ? data.foe.h.slice() : HUN_KEYS.slice(),
+        p: Array.isArray(data.foe && data.foe.p) ? data.foe.p.slice() : PO_KEYS.slice(),
+      },
+      savedAt: Date.now(),
+    };
+    save();
+    return cache.run.levelProgress;
+  }
+  function clearLevelProgress() {
+    cache.run.levelProgress = null;
+    save();
+  }
   function startNextRound() {
     cache.run.round++;
     for (const k of HUN_KEYS) {
@@ -273,7 +295,7 @@
     get, save, reload, unlocked, characterOpen, characterTag,
     selectCharacter, recordDivine, lockCharacter, unlockCharacter,
     campaign, levelUnlocked, clearLevel, cooldown, settleMatch, aliveHuns, alivePos, loseHun, losePos, gainPseudoPos, markPseudoPos, sacrifice, makePseudoSoul, makePseudoPos,
-    gameMods, failRun, startNextRound, resetLevelSouls, resetRun,
+    gameMods, failRun, startNextRound, resetLevelSouls, levelProgress, saveLevelProgress, clearLevelProgress, resetRun,
     accountName, storageKey,
   };
 
