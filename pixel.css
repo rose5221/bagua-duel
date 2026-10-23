@@ -1856,18 +1856,19 @@ html body.px-sheet-open { overflow: hidden; }
   }
 }
 
-/* 三局两胜 · 关卡比分 */
-#app.mobile.pixel .seriesline {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
-  margin: 0 0 10px; padding: 7px 9px;
+/* 关卡内魂灯：双方 3 魂 7 魄与当前小局 */
+#app.mobile.pixel .levelline {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px; margin: 0 0 10px; padding: 8px 9px;
   border: 1px solid var(--px-gold2); border-left: 4px solid var(--px-gold);
   background: rgba(208,174,88,.08);
   color: var(--px-paper2);
 }
-#app.mobile.pixel .seriesline b {
-  color: var(--px-gold); font-size: 12px; font-weight: normal; letter-spacing: .08em;
+#app.mobile.pixel .levelline div { display: flex; flex-direction: column; gap: 2px; }
+#app.mobile.pixel .levelline b {
+  color: var(--px-gold); font-size: 11px; font-weight: normal; letter-spacing: .08em;
 }
-#app.mobile.pixel .seriesline span { font-size: 10px; }
+#app.mobile.pixel .levelline span { font-size: 11px; color: var(--px-paper); }
 
 /* 结算面板数值在深色像素面板上要可读 */
 #app.mobile.pixel .screens .resultrow b { color: var(--px-gold) !important; }

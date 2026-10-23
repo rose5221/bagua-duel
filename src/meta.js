@@ -1,5 +1,5 @@
-/* 八卦弈魂 · 局外存档（角色解锁 / 三魂七魄 / 多局进度）
-   存储按账号道号隔离；未登录用 guest。只写 localStorage，不发服务器。 */
+/* 八卦弈魂 · 本地存档（角色解锁 / 关卡进度 / 关卡内三魂七魄临时状态）
+   三魂七魄每关重置；人物、关卡进度、仙丹跨关保留。只写 localStorage，不发服务器。 */
 (function () {
   'use strict';
   const D = window.DATA;
@@ -236,6 +236,19 @@
     cache.run.active = false;
     save();
   }
+  // 每一关内部重新点亮 3 魂 7 魄；人物、关卡进度、仙丹不在此重置
+  function resetLevelSouls() {
+    cache.run.souls = freshSouls();
+    cache.run.pos = freshPos();
+    cache.run.sacrifices = 0;
+    cache.run.usedSacrificeAttrs = [];
+    cache.run.lastAttrs = [];
+    cache.run.cooldowns = {};
+    cache.run.usedThisMatch = [];
+    cache.run.round = 1;
+    save();
+    return cache.run;
+  }
   function startNextRound() {
     cache.run.round++;
     for (const k of HUN_KEYS) {
@@ -260,7 +273,7 @@
     get, save, reload, unlocked, characterOpen, characterTag,
     selectCharacter, recordDivine, lockCharacter, unlockCharacter,
     campaign, levelUnlocked, clearLevel, cooldown, settleMatch, aliveHuns, alivePos, loseHun, losePos, gainPseudoPos, markPseudoPos, sacrifice, makePseudoSoul, makePseudoPos,
-    gameMods, failRun, startNextRound, resetRun,
+    gameMods, failRun, startNextRound, resetLevelSouls, resetRun,
     accountName, storageKey,
   };
 

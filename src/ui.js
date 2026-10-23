@@ -8,7 +8,12 @@
   const TAIJI = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="48" fill="#F7F3E8" stroke="#17191B" stroke-width="2"/><path d="M50 2 A48 48 0 0 1 50 98 A24 24 0 0 1 50 50 A24 24 0 0 0 50 2 Z" fill="#17191B"/><circle cx="50" cy="26" r="7.5" fill="#F7F3E8"/><circle cx="50" cy="74" r="7.5" fill="#17191B"/></svg>';
   const TAIJI_FIRE = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="48" fill="#F7F3E8" stroke="#17191B" stroke-width="2"/><path d="M50 2 A48 48 0 0 1 50 98 A24 24 0 0 1 50 50 A24 24 0 0 0 50 2 Z" fill="#B4472F"/><circle cx="50" cy="26" r="7.5" fill="#F7F3E8"/><circle cx="50" cy="74" r="7.5" fill="#B4472F"/></svg>';
 
-  const S = { g: null, sel: null, mode: null, extra: null, preview: null, pending: null, difficulty: 'normal', character: 'daotong', charChoice: null, metaSettled: false, lossChoice: null, seasonBlessing: null, seasonOffering: false, trickPicks: [], cooldownSettled: false, level: 0, campaignCleared: false, series: null, paused: false, aiTimer: 0, aiTurn: false, aiStep: 0, aiActions: [], aiDeaths: [], aiFast: false, lastTerm: '', lastRound: 0, flash: '', flashTimer: 0 };
+  const S = { g: null, sel: null, mode: null, extra: null, preview: null, pending: null, difficulty: 'normal', character: 'daotong', charChoice: null, metaSettled: false, lossChoice: null, seasonBlessing: null, seasonOffering: false, trickPicks: [], cooldownSettled: false, level: 0, campaignCleared: false, levelMatch: 1, levelOver: false, levelWon: false, foeSouls: null, bossLossApplied: false, matchPlayerPre: null, matchFoePre: null, paused: false, aiTimer: 0, aiTurn: false, aiStep: 0, aiActions: [], aiDeaths: [], aiFast: false, lastTerm: '', lastRound: 0, flash: '', flashTimer: 0 };
+  const SOUL_NAMES = { tian: '天魂', di: '地魂', ren: '人魂' };
+  const POS_NAMES = { shigou: '尸狗', fushi: '伏矢', queyin: '雀阴', tunzei: '吞贼', feidu: '非毒', chuhui: '除秽', choufei: '臭肺' };
+  const freshFoeSouls = () => ({ h: (D.HUNS || []).map(x => x.key), p: (D.POS || []).map(x => x.key) });
+  const playerLife = () => ({ h: window.Meta ? window.Meta.aliveHuns() : [], p: window.Meta ? window.Meta.alivePos() : [] });
+  const foeLife = () => S.foeSouls || (S.foeSouls = freshFoeSouls());
 
   /* ---------- 天气层 ---------- */
   const FX = (function () {
@@ -143,9 +148,9 @@
     const charTag = c => meta ? meta.characterTag(c.key) : c.tag;
     if (meta) {
       if (!meta.get().run.active) meta.resetRun();
-      // 进入选关界面即结束上一场系列，角色开放更换；开局时再重新锁定
-      S.series = null;
+      // 人物是局外选择：选关界面开放换人，进入关卡后再锁定；魂灯每关重置
       if (meta.get().run.locked) meta.unlockCharacter();
+      if (meta.resetLevelSouls) meta.resetLevelSouls();
       const currentRun = meta.get().run;
       if (currentRun.locked && currentRun.character && meta.characterOpen(currentRun.character)) S.character = currentRun.character;
       else {
@@ -158,8 +163,6 @@
     const chierOpen = !!(meta && meta.characterOpen('chier'));
     const run = meta ? meta.get().run : null;
     const locked = !!(run && run.locked);
-    const runH = meta ? meta.aliveHuns().length : 3;
-    const runP = meta ? meta.alivePos().length : 7;
     const camp = window.Campaign;
     const prog = meta ? meta.campaign() : { unlocked: 1, cleared: [] };
     if (camp) {
@@ -185,17 +188,17 @@
         const tag = locked ? (c.key === S.character ? '已锁' : '锁定') : charTag(c);
         return `<button class="charpick-btn ${S.character === c.key ? 'sel' : ''}" data-char="${c.key}" ${open && !lockedOut ? '' : 'disabled'}><b>${c.name}</b><span>${c.desc}</span><i>${tag}</i></button>`;
       }).join('')}</div>
-      <div class="charstreak">${locked ? '角色已锁定 · 整条弈魂不可更换' : chierOpen ? '痴儿已解锁 · 可在上方直接选择' : streak ? `道童老阴连续 ${streak}/3 · 再成一次解锁痴儿` : '痴儿：道童卜卦连续三次老阴后解锁'}</div>
-      <div class="runmeta">弈魂 · 第 ${run ? run.round : 1} 局 · 魂 ${runH}/3 · 魄 ${runP}/7 · 献祭 ${run ? run.sacrifices : 0}</div>
+      <div class="charstreak">${locked ? '角色已锁定 · 本关内不可更换' : chierOpen ? '痴儿已解锁 · 可在上方直接选择' : streak ? `道童老阴连续 ${streak}/3 · 再成一次解锁痴儿` : '痴儿：道童卜卦连续三次老阴后解锁'}</div>
+      <div class="runmeta">本关魂灯每关重置 · 人物与仙丹跨关保留 · ${cur ? cur.num : ''}</div>
       <div class="levelhead">剧情关卡</div>
       <div class="levelpick">${camp ? camp.LEVELS.map((lv, i) => {
         const open = meta ? meta.levelUnlocked(i) : i === 0;
         const cleared = prog.cleared.includes(i);
         return `<button class="levelbtn ${S.level === i ? 'sel' : ''} ${cleared ? 'cleared' : ''}" data-level="${i}" ${open ? '' : 'disabled'}><b>${lv.num}</b><span>${lv.name}</span><i>${cleared ? '已过' : open ? lv.boss : '未解锁'}</i></button>`;
       }).join('') : ''}</div>
-      ${cur ? `<div class="leveldesc">${cur.taiji ? '<div class="taijiboss">☯</div>' : (cur.portrait ? D.portraitHtml(D.CARDS[cur.portrait], 44, 58) : '')}<div><b>${cur.num} · ${cur.name} · ${cur.boss}</b><span>${cur.story}</span><em>${cur.desc} · 本关三局两胜</em></div></div>` : ''}
+      ${cur ? `<div class="leveldesc">${cur.taiji ? '<div class="taijiboss">☯</div>' : (cur.portrait ? D.portraitHtml(D.CARDS[cur.portrait], 44, 58) : '')}<div><b>${cur.num} · ${cur.name} · ${cur.boss}</b><span>${cur.story}</span><em>${cur.desc} · 本关双方各 3 魂 7 魄，小局胜败会削减魂灯，打空者败</em></div></div>` : ''}
       <div class="startbtns"><button class="primary" id="btnStart">${cur ? '入座 · ' + cur.num : '入座'}</button><button id="btnRules2">规则</button></div>
-      <div class="startfoot">${chierOpen ? '四角色均可选' : '坐北朝南先手 · 道童 / 清风 / 旁门可选；痴儿连续三次老阴解锁'} · 每关三局两胜 · 过关后可换角色 · 随机 2 属性 × 4 张出战</div>
+      <div class="startfoot">${chierOpen ? '四角色均可选' : '坐北朝南先手 · 道童 / 清风 / 旁门可选；痴儿连续三次老阴解锁'} · 每关开始前选人物 · 关内锁定 · 过关/失守后可换角色 · 随机 2 属性 × 4 张出战</div>
     </div>`;
     el.classList.add('show');
     el.querySelectorAll('.levelbtn').forEach(b => b.onclick = () => {
@@ -211,9 +214,8 @@
       el.querySelectorAll('.charpick-btn').forEach(x => x.classList.toggle('sel', x === b));
     });
     $('btnStart').onclick = () => {
-      S.series = { level: S.level, wins: 0, losses: 0, match: 1, resultCounted: false };
       el.classList.remove('show');
-      beginSeason();
+      startLevel();
     };
     $('btnRules2').onclick = showRules;
   }
@@ -342,49 +344,80 @@
     $('rulesClose').onclick = () => { if (!S.g) showStart(); else el.classList.remove('show'); };
   }
 
+  function applyBossLoss() {
+    const f = foeLife();
+    const preH = f.h.length, preP = f.p.length;
+    // 只剩一魂一魄时再输一小局：彻底失败
+    if (preH <= 1 && preP <= 1) return true;
+    if (f.p.length >= 2) f.p.splice(0, 2);
+    else if (f.h.length > 1) f.h.pop();
+    else return true;
+    return f.h.length === 0;
+  }
+
+  function lifeStatusHtml(player, foe) {
+    return `<div class="levelline">
+      <div><b>你</b><span>魂 ${player.h.length}/3 · 魄 ${player.p.length}/7</span></div>
+      <div><b>庄家</b><span>魂 ${foe.h.length}/3 · 魄 ${foe.p.length}/7</span></div>
+      <div><b>本关</b><span>第 ${S.levelMatch} 场</span></div>
+    </div>`;
+  }
+
   function showResult(silent, metaMsg) {
     const g = S.g; if (!g || !g.over) return;
     closeSheets();
     const win = g.winner === HUMAN;
     const el = $('screens');
     const meta = window.Meta;
-    const series = S.series;
-    if (series && !series.resultCounted) {
-      if (win) series.wins++; else series.losses++;
-      series.resultCounted = true;
-    }
-    const seriesWon = series ? series.wins >= 2 : win;
-    const seriesLost = series ? series.losses >= 2 : !win;
-    const seriesDone = seriesWon || seriesLost;
     if (meta) {
       for (const k of g.lostHuns || []) meta.loseHun(k);
       for (const k of g.pseudoPos || []) meta.markPseudoPos(k);
       if (!S.cooldownSettled) { meta.settleMatch(g.summoned || []); S.cooldownSettled = true; }
     }
-    const run = meta ? meta.get().run : null;
     const camp = window.Campaign;
     const level = camp ? camp.get(S.level) : null;
     const isFinal = S.level >= (camp ? camp.count - 1 : 0);
-    if (seriesWon && level && meta && !S.campaignCleared) {
+    let player = playerLife();
+    const foe = foeLife();
+    const playerPre = S.matchPlayerPre || { h: player.h.length, p: player.p.length };
+    let levelLost = player.h.length === 0;
+    if (!win && playerPre.h <= 1 && playerPre.p <= 1) levelLost = true;
+    if (meta && !win && S.metaSettled && player.h.length === 0 && player.p.length === 0) levelLost = true;
+
+    let levelWon = false;
+    if (win) {
+      if (!S.bossLossApplied) {
+        S.bossLossApplied = true;
+        levelWon = applyBossLoss();
+        S.levelWon = levelWon;
+      } else {
+        levelWon = !!S.levelWon;
+      }
+    }
+    if (levelLost) levelWon = false;
+    if (levelLost) { S.levelOver = true; S.levelWon = false; }
+    if (levelWon) { S.levelOver = true; S.levelWon = true; }
+    if (!S.levelOver) S.levelWon = false;
+
+    // 本关胜利才清关；本关失败可重试，不再触发局外全局失败
+    if (levelWon && level && meta && !S.campaignCleared) {
       meta.clearLevel(S.level);
-      meta.unlockCharacter();
       S.campaignCleared = true;
     }
-    if (seriesDone && meta) meta.unlockCharacter();
-    const aliveH = meta ? meta.aliveHuns() : [];
-    const aliveP = meta ? meta.alivePos() : [];
-    const failed = meta ? (aliveH.length <= 1 && aliveP.length <= 1) : false;
-    if (failed) meta.failRun();
-    const soulNames = { tian: '天魂', di: '地魂', ren: '人魂' };
-    const posNames = { shigou: '尸狗', fushi: '伏矢', queyin: '雀阴', tunzei: '吞贼', feidu: '非毒', chuhui: '除秽', choufei: '臭肺' };
+    if (S.levelOver && meta) meta.unlockCharacter();
+    player = playerLife();
+
+    const aliveH = player.h;
+    const aliveP = player.p;
+    const run = meta ? meta.get().run : null;
     let metaHtml = '';
     if (meta && run) {
-      metaHtml = `<div class="metaline"><b>弈魂 · 第 ${run.round} 局</b><span>魂 ${aliveH.length}/3 · 魄 ${aliveP.length}/7 · 献祭 ${run.sacrifices}</span></div>`;
-      if (failed) {
-        metaHtml += `<div class="metafail"><b>全局失败</b><span>三魂七魄已断，整条弈魂到此为止。</span></div>`;
+      metaHtml = `<div class="metaline"><b>本关 · 第 ${S.levelMatch} 场</b><span>魂 ${aliveH.length}/3 · 魄 ${aliveP.length}/7 · 献祭 ${run.sacrifices}</span></div>`;
+      if (S.levelOver && !levelWon) {
+        metaHtml += `<div class="metafail"><b>本关魂灯熄灭</b><span>${playerPre.h <= 1 && playerPre.p <= 1 ? '只剩一魂一魄时再败，魂灯彻底熄灭。' : '三魂七魄已被打空，本关失败。'}</span></div>`;
       } else if (metaMsg) {
         metaHtml += `<div class="metamsg">${metaMsg}</div>`;
-      } else if (!win && !S.metaSettled) {
+      } else if (!win && !S.metaSettled && !S.levelOver) {
         if (!S.lossChoice) {
           metaHtml += `<div class="metachoice"><div>败者结算：失一魂，或失两魄；三魂至少留其一。选中后自己决定失去哪一个。</div><div class="metabtns">
             <button data-loss="hun" ${aliveH.length <= 1 ? 'disabled' : ''}>失一魂</button>
@@ -392,62 +425,60 @@
           </div></div>`;
         } else if (S.lossChoice.kind === 'hun') {
           metaHtml += `<div class="metachoice"><div>选择要失去的一魂（至少保留一魂）：</div>
-            <div class="losslist">${aliveH.map(k => `<button data-pick-soul="${k}">${soulNames[k]}</button>`).join('')}</div>
+            <div class="losslist">${aliveH.map(k => `<button data-pick-soul="${k}">${SOUL_NAMES[k]}</button>`).join('')}</div>
             <button class="lossback" data-loss-back>返回</button></div>`;
         } else {
           const picks = S.lossChoice.picks || [];
           metaHtml += `<div class="metachoice"><div>选择要失去的两魄（已选 ${picks.length}/2）：</div>
-            <div class="losslist">${aliveP.map(k => `<button class="${picks.includes(k) ? 'sel' : ''}" data-pick-pos="${k}" ${!picks.includes(k) && picks.length >= 2 ? 'disabled' : ''}>${posNames[k]}</button>`).join('')}</div>
+            <div class="losslist">${aliveP.map(k => `<button class="${picks.includes(k) ? 'sel' : ''}" data-pick-pos="${k}" ${!picks.includes(k) && picks.length >= 2 ? 'disabled' : ''}>${POS_NAMES[k]}</button>`).join('')}</div>
             <div class="metabtns"><button data-loss-back>返回</button><button data-confirm-loss ${picks.length === 2 ? '' : 'disabled'}>确认失两魄</button></div></div>`;
         }
       } else if (win && g.character === 'pangmen' && E.ownUnits(g, HUMAN).length === 3) {
         const lostReal = Object.keys(run.pos).filter(k => run.pos[k].lost && !run.pos[k].pseudo);
-        metaHtml += `<div class="metachoice"><div>夺魄：胜利时场上仍有 3 张，可选一个已空缺的魄位炼为伪魄。</div>${lostReal.length
-          ? `<div class="metabtns">${lostReal.map(k => `<button data-seize="${k}">${posNames[k]} → 伪魄</button>`).join('')}</div>`
+        metaHtml += `<div class="metachoice"><div>夺魄：这一小局胜利时场上仍有 3 张，可选一个已空缺的魄位炼为伪魄。</div>${lostReal.length
+          ? `<div class="metabtns">${lostReal.map(k => `<button data-seize="${k}">${POS_NAMES[k]} → 伪魄</button>`).join('')}</div>`
           : '<span class="metamsg">你的七魄没有空缺，无法炼伪。</span>'}</div>`;
       }
-      if (!failed && !win && S.metaSettled) {
+      if (!win && S.metaSettled && !S.levelOver) {
         const lostRealH = Object.keys(run.souls).filter(k => run.souls[k].lost && !run.souls[k].pseudo);
         const lostRealP = Object.keys(run.pos).filter(k => run.pos[k].lost && !run.pos[k].pseudo);
         const attrsLeft = D.ATTRS.filter(a => (!run.lastAttrs || !run.lastAttrs.length || run.lastAttrs.includes(a.key)) && run.usedSacrificeAttrs.filter(x => x === a.key).length < 2);
         if (lostRealH.length || lostRealP.length) {
-          metaHtml += `<div class="metachoice sacbox"><div>献祭窗口：每次消耗一个属性的 4 张牌；伪魂需累计 2 次，伪魄需累计 1 次。</div>
+          metaHtml += `<div class="metachoice sacbox"><div>本关献祭窗口：每次消耗一个属性的 4 张牌；伪魂需累计 2 次，伪魄需累计 1 次。换关后重置。</div>
             <div class="metabtns sacattrs">${attrsLeft.map(a => `<button data-sacrifice="${a.key}">${a.sym} ${a.name}</button>`).join('') || '<span class="metamsg">四属性已献尽</span>'}</div>
-            <div class="metabtns">${lostRealH.map(k => `<button data-pseudo-hun="${k}" ${run.sacrifices < 2 ? 'disabled' : ''}>${soulNames[k]} → 伪魂</button>`).join('')}${lostRealP.map(k => `<button data-pseudo-pos="${k}" ${run.sacrifices < 1 ? 'disabled' : ''}>${posNames[k]} → 伪魄</button>`).join('')}</div>
+            <div class="metabtns">${lostRealH.map(k => `<button data-pseudo-hun="${k}" ${run.sacrifices < 2 ? 'disabled' : ''}>${SOUL_NAMES[k]} → 伪魂</button>`).join('')}${lostRealP.map(k => `<button data-pseudo-pos="${k}" ${run.sacrifices < 1 ? 'disabled' : ''}>${POS_NAMES[k]} → 伪魄</button>`).join('')}</div>
           </div>`;
         }
       }
     }
-    const seriesHtml = series ? `<div class="seriesline"><b>${seriesWon ? '本关过关' : seriesLost ? '本关失守' : '本关进行中'}</b><span>三局两胜 · 比分 ${series.wins}:${series.losses} · 第 ${series.match} 局</span></div>` : '';
-    const canNext = meta && !failed && (win || S.metaSettled);
-    const canLeave = !meta || win || S.metaSettled || failed;
-    const nextLabel = level
-      ? (!seriesDone ? (win ? '继续本关' : '再战一局')
-        : seriesWon ? (isFinal ? '完成剧情' : '下一关 · 换角色') : '重新备战 · 可换角色')
-      : '下一局';
+    const canNext = S.levelOver || win || S.metaSettled;
+    const canLeave = S.levelOver || win || S.metaSettled;
+    const nextLabel = S.levelOver
+      ? (levelWon ? (isFinal ? '完成剧情' : '下一关 · 换角色') : '重新备战 · 可换角色')
+      : (win ? `继续本关 · 第 ${S.levelMatch + 1} 场` : '再战一场');
+    const kick = S.levelOver ? (levelWon ? 'WIN' : 'LOSE') : (win ? 'WIN · 小局' : 'LOSE · 小局');
+    const title = S.levelOver ? (levelWon ? '本关胜利' : '本关失败') : (win ? '本局胜' : '本局负');
     el.innerHTML = `<div class="panel resultpanel">
-      <div class="kick">${win ? 'WIN' : 'LOSE'}</div>
-      <h1>${win ? '你赢了' : '庄家赢了'}</h1>
-      <p class="lead">${win ? '庄家 8 张人物牌尽失。' : '你的 8 张人物牌尽失。'}${level ? ` · ${level.num} ${level.name} · ${level.boss}` : ''}${series ? ` · 本关 ${series.wins}:${series.losses}` : ''}</p>
+      <div class="kick">${kick}</div>
+      <h1>${title}</h1>
+      <p class="lead">${win ? '你赢下这一小局。' : '庄家赢下这一小局。'}${level ? ` · ${level.num} ${level.name} · ${level.boss}` : ''}${S.levelOver ? '' : ' · 魂灯未熄，继续下一场。'}</p>
       <div class="resultrow">
         <div><b>你</b><span>余 ${E.remaining(g.players[0])} / 8</span></div>
         <div><b>庄家</b><span>余 ${E.remaining(g.players[1])} / 8</span></div>
         <div><b>历时</b><span>${g.turnNo} 手 · ${g.round} 轮</span></div>
       </div>
-      ${seriesHtml}
+      ${lifeStatusHtml(player, foe)}
       ${metaHtml}
       <div class="startbtns">
         ${canNext ? `<button class="primary" id="btnNext">${nextLabel}</button>` : ''}
-        ${failed ? '<button class="primary" id="btnResetMeta">重开弈魂</button>' : ''}
         ${canLeave ? '<button id="btnMenu">回到封面</button>' : ''}
       </div>
-      <div class="metafoot">三魂：${meta ? aliveH.map(k => soulNames[k]).join('、') || '尽失' : '—'} · 七魄：${meta ? aliveP.map(k => posNames[k]).join('、') || '尽失' : '—'}</div>
+      <div class="metafoot">你：${aliveH.map(k => SOUL_NAMES[k]).join('、') || '魂尽'} · ${aliveP.map(k => POS_NAMES[k]).join('、') || '魄尽'}　|　庄家：${foe.h.length} 魂 ${foe.p.length} 魄</div>
     </div>`;
     el.classList.add('show');
-    // 三局两胜中只在本关系列结束时报一次结果，避免每小局都弹仙丹奖励打断
-    if (!silent && !g.resultAnnounced && (!series || seriesDone)) {
+    if (!silent && !g.resultAnnounced && S.levelOver) {
       g.resultAnnounced = true;
-      document.dispatchEvent(new CustomEvent('bagua:result', { detail: { win, g, series, seriesDone } }));
+      document.dispatchEvent(new CustomEvent('bagua:result', { detail: { win: levelWon, g, levelWon, levelLost } }));
     }
     el.querySelectorAll('[data-loss]').forEach(b => b.onclick = () => {
       if (!meta) return;
@@ -461,7 +492,7 @@
       meta.loseHun(k);
       S.metaSettled = true;
       S.lossChoice = null;
-      showResult(true, `你失去了${soulNames[k]}。`);
+      showResult(true, `你失去了${SOUL_NAMES[k]}。`);
     });
     el.querySelectorAll('[data-pick-pos]').forEach(b => b.onclick = () => {
       if (!meta || !S.lossChoice || S.lossChoice.kind !== 'pos') return;
@@ -485,12 +516,12 @@
       S.metaSettled = true;
       const lost = picks.slice();
       S.lossChoice = null;
-      showResult(true, `你失去了${lost.map(k => posNames[k]).join('、')}。`);
+      showResult(true, `你失去了${lost.map(k => POS_NAMES[k]).join('、')}。`);
     });
     el.querySelectorAll('[data-seize]').forEach(b => b.onclick = () => {
       if (!meta) return;
       const k = b.dataset.seize;
-      if (meta.gainPseudoPos(k)) showResult(true, `夺魄：${posNames[k]}已炼为伪魄，其失魄效果清除。`);
+      if (meta.gainPseudoPos(k)) showResult(true, `夺魄：${POS_NAMES[k]}已炼为伪魄，其失魄效果清除。`);
     });
     el.querySelectorAll('[data-sacrifice]').forEach(b => b.onclick = () => {
       if (!meta) return;
@@ -501,43 +532,56 @@
     el.querySelectorAll('[data-pseudo-hun]').forEach(b => b.onclick = () => {
       if (!meta) return;
       const k = b.dataset.pseudoHun;
-      if (meta.makePseudoSoul(k)) showResult(true, `${soulNames[k]}已炼为伪魂，失魂增益/减益清除。`);
+      if (meta.makePseudoSoul(k)) showResult(true, `${SOUL_NAMES[k]}已炼为伪魂，失魂增益/减益清除。`);
     });
     el.querySelectorAll('[data-pseudo-pos]').forEach(b => b.onclick = () => {
       if (!meta) return;
       const k = b.dataset.pseudoPos;
-      if (meta.makePseudoPos(k)) showResult(true, `${posNames[k]}已炼为伪魄，失魄增益/减益清除。`);
+      if (meta.makePseudoPos(k)) showResult(true, `${POS_NAMES[k]}已炼为伪魄，失魄增益/减益清除。`);
     });
     const next = $('btnNext');
     if (next) next.onclick = () => {
       el.classList.remove('show');
-      if (level) {
-        if (!seriesDone) {
-          if (meta) meta.startNextRound();
-          if (S.series) { S.series.match++; S.series.resultCounted = false; }
-          S.metaSettled = false; S.lossChoice = null;
-          beginSeason();
-          return;
-        }
+      if (!S.levelOver) {
         if (meta) meta.startNextRound();
-        if (seriesWon && !isFinal) S.level = Math.min(S.level + 1, camp.count - 1);
+        S.levelMatch++;
+        S.bossLossApplied = false;
+        S.metaSettled = false;
+        S.lossChoice = null;
         S.g = null;
-        S.series = null;
-        if (meta) meta.unlockCharacter();
-        showStart();
+        beginSeason();
         return;
       }
-      if (meta) meta.startNextRound();
-      beginSeason();
-    };
-    const reset = $('btnResetMeta');
-    if (reset) reset.onclick = () => {
-      if (meta) meta.resetRun();
-      el.classList.remove('show');
-      S.g = null; showStart();
+      if (levelWon && !isFinal) S.level = Math.min(S.level + 1, camp.count - 1);
+      S.g = null;
+      S.levelOver = false;
+      S.levelWon = false;
+      if (meta) meta.unlockCharacter();
+      showStart();
     };
     const menu = $('btnMenu');
-    if (menu) menu.onclick = () => { el.classList.remove('show'); S.g = null; S.sel = null; S.series = null; if (meta) meta.unlockCharacter(); showStart(); };
+    if (menu) menu.onclick = () => {
+      el.classList.remove('show');
+      S.g = null; S.sel = null; S.levelOver = false; S.levelWon = false;
+      if (meta) meta.unlockCharacter();
+      showStart();
+    };
+  }
+
+  function startLevel() {
+    const meta = window.Meta;
+    // 三魂七魄属于本关内部，换关重置；人物、仙丹、关卡进度保留
+    if (meta) { meta.resetLevelSouls(); meta.lockCharacter(S.character); }
+    S.foeSouls = freshFoeSouls();
+    S.levelMatch = 1;
+    S.levelOver = false;
+    S.levelWon = false;
+    S.bossLossApplied = false;
+    S.matchPlayerPre = { h: 3, p: 7 };
+    S.matchFoePre = { h: 3, p: 7 };
+    S.g = null;
+    S.campaignCleared = false;
+    beginSeason();
   }
 
   function beginSeason() {
@@ -661,6 +705,11 @@
       window.Meta.lockCharacter(S.character);
     }
     const mods = window.Meta ? window.Meta.gameMods() : {};
+    const preMeta = window.Meta;
+    S.foeSouls = S.foeSouls || freshFoeSouls();
+    S.matchPlayerPre = { h: preMeta ? preMeta.aliveHuns().length : 3, p: preMeta ? preMeta.alivePos().length : 7 };
+    S.matchFoePre = { h: S.foeSouls.h.length, p: S.foeSouls.p.length };
+    S.bossLossApplied = false;
     const run = window.Meta ? window.Meta.get().run : null;
     const lostHuns = run ? Object.keys(run.souls).filter(k => run.souls[k].lost && !run.souls[k].pseudo) : [];
     const B = window.Blessings;
@@ -1168,8 +1217,9 @@
     const st = g.blessState ? g.blessState[HUMAN] : null;
     const trickReady = !!(b && b.kind === 'trick' && b.key !== 't_winter' && st && !st.trick);
     const seasonTxt = B ? B.seasonName(g.season) : '—';
-    const seriesTxt = S.series ? ` · 本关 ${S.series.wins}:${S.series.losses}` : '';
-    $('season').innerHTML = `${g.levelName ? `<div class="levelbadge">${g.levelName} · ${g.bossName}${seriesTxt}</div>` : ''}<div class="blessbar"><span>天时 · ${seasonTxt}</span><b class="${b && b.kind === 'trick' ? 'trick' : ''}">${b ? b.name : '无'}</b>${trickReady ? `<button class="trickbtn" data-trick-start>妙计可用</button>` : ''}</div>
+    const pl = playerLife(), fl = foeLife();
+    const levelTxt = ` · 第 ${S.levelMatch} 场 · 你 ${pl.h.length}魂${pl.p.length}魄 / 庄 ${fl.h.length}魂${fl.p.length}魄`;
+    $('season').innerHTML = `${g.levelName ? `<div class="levelbadge">${g.levelName} · ${g.bossName}${levelTxt}</div>` : ''}<div class="blessbar"><span>天时 · ${seasonTxt}</span><b class="${b && b.kind === 'trick' ? 'trick' : ''}">${b ? b.name : '无'}</b>${trickReady ? `<button class="trickbtn" data-trick-start>妙计可用</button>` : ''}</div>
       <div class="foebless">庄家福缘：${foe ? foe.name : '无'}</div>
       <div class="seasontop"><span>场地 · 每轮开始</span><b>${g.term.name}</b></div>
       ${FIELD_RULES.map(f => `<div class="fgrow" style="--c:${ELEMENTS[f.el].color}"><b>${ELEMENTS[f.el].name}</b><span>生 ${f.gen}</span><span>同 ${f.equal}</span><span>克 ${f.over}</span></div>`).join('')}
