@@ -1926,3 +1926,48 @@ html body.px-sheet-open { overflow: hidden; }
   background: var(--px-gold); color: #101312; border-color: var(--px-gold);
 }
 .px-confirm .startbtns button:hover { border-color: var(--px-paper); }
+
+/* 规则页：深色面板上的高对比文字与三魂七魄效果 */
+#app.mobile.pixel .rulespanel {
+  width: min(1040px, 100%);
+  background: #0d1213;
+  color: var(--px-paper);
+  border-color: var(--px-gold2);
+}
+#app.mobile.pixel .rulespanel .phead h2 { color: var(--px-paper); }
+#app.mobile.pixel .rulespanel .phead button {
+  color: var(--px-paper); background: #142022; border: 2px solid var(--px-stone2);
+  padding: 4px 9px; font-size: 10px;
+}
+#app.mobile.pixel .rulespanel .rulegrid b { color: var(--px-gold); font-size: 13px; }
+#app.mobile.pixel .rulespanel .rulegrid p { color: var(--px-paper); font-size: 13px; line-height: 1.8; }
+#app.mobile.pixel .rulespanel .fieldguide { border-top-color: var(--px-stone2); }
+#app.mobile.pixel .rulespanel .fieldguide .fghead { color: var(--px-gold); font-size: 12px; }
+#app.mobile.pixel .rulespanel .fieldguide .fgrow { color: var(--px-paper2); font-size: 11px; border-bottom-color: #293335; }
+#app.mobile.pixel .rulespanel .fieldguide .fgrow b { color: var(--px-paper); }
+#app.mobile.pixel .rulespanel .skillref { border-top-color: var(--px-stone2); }
+#app.mobile.pixel .rulespanel .skillref div { color: var(--px-paper2); font-size: 12px; line-height: 1.65; }
+#app.mobile.pixel .rulespanel .skillref b { color: var(--px-gold); }
+#app.mobile.pixel .rulespanel .rulesfoot { color: var(--px-paper2); font-size: 11px; }
+
+#app.mobile.pixel .soulref {
+  margin-top: 12px; padding-top: 9px;
+  border-top: 1px solid var(--px-stone2);
+}
+#app.mobile.pixel .soulref .fghead { color: var(--px-gold); font-size: 12px; margin-bottom: 7px; }
+#app.mobile.pixel .soulrefgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 14px; }
+#app.mobile.pixel .soulrefgrid div {
+  display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 4px;
+  font-size: 11.5px; line-height: 1.5; color: var(--px-paper2);
+  border-bottom: 1px dashed #293335; padding: 3px 0;
+}
+#app.mobile.pixel .soulrefgrid b { color: var(--px-paper); font-weight: normal; }
+#app.mobile.pixel .soulrefgrid span { color: #cfe6d8; }
+#app.mobile.pixel .soulrefgrid em { color: #ffbfae; font-style: normal; grid-column: 2; }
+#app.mobile.pixel .soulrefnote { margin: 8px 0 0; color: var(--px-paper2); font-size: 11.5px; line-height: 1.65; }
+
+@media (max-width: 700px) {
+  #app.mobile.pixel .rulespanel .rulegrid { grid-template-columns: 1fr; }
+  #app.mobile.pixel .soulrefgrid { grid-template-columns: 1fr; }
+  #app.mobile.pixel .rulespanel .rulegrid p { font-size: 11px; }
+}

@@ -390,8 +390,14 @@
         <div><b>行动</b><p>场上每张牌每回合可攻击一次、获得一件装备、或移动到相邻空位，三选一。新落的牌当回合不能行动，但可以被攻击。</p></div>
         <div><b>攻击</b><p>空手/近战/盾牌打邻位，远程和长枪打距离 2。相生正常；克制方对被克方伤害 +1。无反击。</p></div>
         <div><b>技能</b><p>每回合最多 2 张且不能重复；每张技能整局 2 次。目标带对应属性/家庭成员时增强。</p></div>
-        <div><b>角色</b><p>开始界面选择。当前道童每回合可求签一次、卜卦一次，均不占人物行动，也不消耗技能卡次数；求签签文只在角色面板显示。清风/旁门/痴儿随三魂七魄多局流程开放。</p></div>
-        <div><b>胜负</b><p>一方 8 张人物牌全部失去，立即结束。</p></div>
+        <div><b>角色</b><p>每关开始前选择，关内锁定；过关或本关失败后回到选关界面可重新选人。道童可求签/卜卦，清风可化身/分身，旁门可炼魂/夺魄，痴儿解锁后可选。</p></div>
+        <div><b>关卡魂灯</b><p>进入一关时双方各点亮 3 魂 7 魄。每小局失败方失一魂或两魄，魂灯未熄就继续下一场；只剩一魂一魄时再败、三魂七魄被打空，或清风最后一魂化身阵亡，本关结束。人物与仙丹跨关保留，魂灯每关重置；退出未结束关卡会保存进度。</p></div>
+        <div><b>小局胜负</b><p>一方 8 张人物牌全部失去，只算输掉这一小局；败方扣除魂灯后继续本关，直到一方魂灯熄灭。</p></div>
+      </div>
+      <div class="soulref">
+        <div class="fghead">三魂七魄 · 失去后的效果</div>
+        <div class="soulrefgrid">${D.HUNS.map(h => { const e=SOUL_EFFECTS[h.key]; return `<div><b>${h.name}</b><span>缓冲：${e.good}</span><em>结束：${e.bad}</em></div>`; }).join('')}${D.POS.map(p => { const e=SOUL_EFFECTS[p.key]; return `<div><b>${p.name}</b><span>缓冲：${e.good}</span><em>结束：${e.bad}</em></div>`; }).join('')}</div>
+        <p class="soulrefnote">失魂缓冲 3 小局（痴儿 4），失魄缓冲 2 小局（痴儿 3）；缓冲结束后转为减益。伪魂/伪魄无效果。具体剩余小局可在右侧「魂灯」面板查看。</p>
       </div>
       <div class="fieldguide"><div class="fghead">场地 · 每轮开始</div>${FIELD_RULES.map(f => `<div class="fgrow" style="--c:${ELEMENTS[f.el].color}"><b>${ELEMENTS[f.el].name}</b><span>生：${f.gen}</span><span>同：${f.equal}</span><span>克：${f.over}</span></div>`).join('')}</div>
       <div class="skillref">${SKILLS.map(s => `<div><b>${s.name}</b><span>${s.desc}</span></div>`).join('')}</div>
