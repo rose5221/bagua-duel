@@ -920,10 +920,12 @@
     if (S.mode === 'place') { el.innerHTML = '落子：点一个空席 <span class="sub">或再点一张牌取消</span>'; return; }
     if (S.mode === 'unit') {
       let bar = '';
+      let cooldown = false;
       const slot = S.sel && S.sel.slot;
       if (slot) {
         const u = E.unitAt(g, slot);
         if (u && u.owner === HUMAN) {
+          cooldown = g.turnNo < (u.hastyCdUntil || 0);
           const b = [];
           if (E.defendValid(g, HUMAN, slot, 'hasty').ok) b.push(`<button class="dbtn" data-defend="hasty" data-slot="${slot}">仓促防御</button>`);
           if (E.defendValid(g, HUMAN, slot, 'firm').ok) b.push(`<button class="dbtn" data-defend="firm" data-slot="${slot}">坚守防御</button>`);
@@ -931,7 +933,7 @@
           if (b.length) bar = `<span class="defendbar">${b.join('')}</span>`;
         }
       }
-      el.innerHTML = '点红色敌人攻击 · 点蓝色邻位移动 <span class="sub">每张牌本回合一次</span>' + bar;
+      el.innerHTML = '点红色敌人攻击 · 点蓝色邻位移动 <span class="sub">每张牌本回合一次</span>' + (cooldown && !bar ? '<span class="sub cooldownhint">防御冷却中 · 本回合不能再防御</span>' : '') + bar;
       return;
     }
     if (S.mode === 'equip') { el.innerHTML = '装备：点一张能行动的己方单位'; return; }

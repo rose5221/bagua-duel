@@ -209,6 +209,7 @@ body.pixelbody { background: #06090a; }
   justify-content: center;
 }
 #app.mobile.pixel .prompt .sub { display: none; }
+#app.mobile.pixel .prompt .cooldownhint { display: inline; color: var(--px-gold); font-size: 8px; }
 
 /* preview / panels */
 #app.mobile.pixel .mbody { padding: 5px 8px 26px; gap: 6px; }

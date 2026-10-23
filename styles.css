@@ -161,6 +161,7 @@ button.primary:hover { background: var(--fire); border-color: var(--fire); color
 .prompt { position: relative; z-index: 5; flex: 0 0 24px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 10.5px; color: var(--fire); letter-spacing: .03em; text-align: center; }
 .prompt b { color: var(--paper0); font-weight: 500; }
 .prompt .sub { color: var(--ink4); font-family: var(--mono); font-size: 8px; }
+.prompt .cooldownhint { color: var(--metal); font-family: var(--mono); font-size: 8px; margin-left: 5px; }
 
 /* ---------- 右侧：天时 + 记录 ---------- */
 .season { background: var(--panel2); border: 1px solid #293033; border-radius: 3px; padding: 8px 9px; }

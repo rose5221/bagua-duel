@@ -104,6 +104,10 @@
       if (!u || u.owner !== p.id) continue;
       u.acted = false;
       u.justPlayed = false;
+      if (u.guard === 'hasty') {
+        u.guard = null;
+        log(g, p.id, 'defend', `「${u.card.name}」的仓促防御结束（回到自己回合）`);
+      }
       u.extraActions = 0;
       u.shield = u.shieldMax + u.tempShield;
     }
@@ -234,7 +238,7 @@
       weapon: null, weaponHp: 0, shield: 0, shieldMax: 0, tempShield: 0, range: 1,
       acted: false, justPlayed: true, extraActions: 0, mult: 1, multUses: 0,
       burn: 0, attackBan: 0, skillBan: 0, banTurns: 0,
-      guard: null, hastyTurn: -99, poison: 0, poisonAdded: false,
+      guard: null, hastyTurn: -99, hastyCdUntil: 0, poison: 0, poisonAdded: false,
       fieldDmg: 0, fieldArmor: 0, fieldVuln: 0, fieldBurnOnHit: false, dead: false,
       immuneOnce: firstImmune,
     };
@@ -328,9 +332,9 @@
       return { ok: true, u };
     }
     if (u.justPlayed) return { ok: false, msg: '刚落下的牌本回合不能行动' };
+    if (mode !== 'cancel' && g.turnNo < (u.hastyCdUntil || 0)) return { ok: false, msg: '防御冷却中：本回合不能再防御' };
     if (u.guard === 'firm') return { ok: false, msg: '已在坚守防御中' };
     if (!canUnitAct(g, pid, u)) return { ok: false, msg: '这张牌本回合已行动' };
-    if (mode === 'hasty' && g.turnNo - u.hastyTurn <= 2) return { ok: false, msg: '仓促防御不能连续使用' };
     return { ok: true, u };
   }
 
@@ -351,7 +355,8 @@
     }
     u.guard = 'hasty';
     u.hastyTurn = g.turnNo;
-    log(g, pid, 'defend', `${p.name} 的「${u.card.name}」仓促防御：下次受到的攻击伤害减半`);
+    u.hastyCdUntil = g.turnNo + 4;
+    log(g, pid, 'defend', `${p.name} 的「${u.card.name}」仓促防御：下次受到的攻击伤害减半；回到自己回合后失效，并有一回合防御冷却`);
     return { ok: true };
   }
 
@@ -713,7 +718,7 @@
       weapon: null, weaponHp: 0, shield: 0, shieldMax: 0, tempShield: 0, range: 1,
       acted: false, justPlayed: true, extraActions: 0, mult: 1, multUses: 0,
       burn: 0, attackBan: 0, skillBan: 0, banTurns: 0,
-      guard: null, hastyTurn: -99, poison: 0, poisonAdded: false,
+      guard: null, hastyTurn: -99, hastyCdUntil: 0, poison: 0, poisonAdded: false,
       fieldDmg: 0, fieldArmor: 0, fieldVuln: 0, fieldBurnOnHit: false, dead: false,
       summon: { type, key, name },
     };
