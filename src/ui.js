@@ -8,7 +8,7 @@
   const TAIJI = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="48" fill="#F7F3E8" stroke="#17191B" stroke-width="2"/><path d="M50 2 A48 48 0 0 1 50 98 A24 24 0 0 1 50 50 A24 24 0 0 0 50 2 Z" fill="#17191B"/><circle cx="50" cy="26" r="7.5" fill="#F7F3E8"/><circle cx="50" cy="74" r="7.5" fill="#17191B"/></svg>';
   const TAIJI_FIRE = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="48" fill="#F7F3E8" stroke="#17191B" stroke-width="2"/><path d="M50 2 A48 48 0 0 1 50 98 A24 24 0 0 1 50 50 A24 24 0 0 0 50 2 Z" fill="#B4472F"/><circle cx="50" cy="26" r="7.5" fill="#F7F3E8"/><circle cx="50" cy="74" r="7.5" fill="#B4472F"/></svg>';
 
-  const S = { g: null, sel: null, mode: null, extra: null, preview: null, pending: null, difficulty: 'normal', character: 'daotong', charChoice: null, metaSettled: false, lossChoice: null, seasonBlessing: null, seasonOffering: false, trickPicks: [], cooldownSettled: false, level: 0, campaignCleared: false, paused: false, aiTimer: 0, aiTurn: false, aiStep: 0, aiActions: [], aiDeaths: [], aiFast: false, lastTerm: '', lastRound: 0, flash: '', flashTimer: 0 };
+  const S = { g: null, sel: null, mode: null, extra: null, preview: null, pending: null, difficulty: 'normal', character: 'daotong', charChoice: null, metaSettled: false, lossChoice: null, seasonBlessing: null, seasonOffering: false, trickPicks: [], cooldownSettled: false, level: 0, campaignCleared: false, series: null, paused: false, aiTimer: 0, aiTurn: false, aiStep: 0, aiActions: [], aiDeaths: [], aiFast: false, lastTerm: '', lastRound: 0, flash: '', flashTimer: 0 };
 
   /* ---------- 天气层 ---------- */
   const FX = (function () {
@@ -143,6 +143,9 @@
     const charTag = c => meta ? meta.characterTag(c.key) : c.tag;
     if (meta) {
       if (!meta.get().run.active) meta.resetRun();
+      // 进入选关界面即结束上一场系列，角色开放更换；开局时再重新锁定
+      S.series = null;
+      if (meta.get().run.locked) meta.unlockCharacter();
       const currentRun = meta.get().run;
       if (currentRun.locked && currentRun.character && meta.characterOpen(currentRun.character)) S.character = currentRun.character;
       else {
@@ -190,9 +193,9 @@
         const cleared = prog.cleared.includes(i);
         return `<button class="levelbtn ${S.level === i ? 'sel' : ''} ${cleared ? 'cleared' : ''}" data-level="${i}" ${open ? '' : 'disabled'}><b>${lv.num}</b><span>${lv.name}</span><i>${cleared ? '已过' : open ? lv.boss : '未解锁'}</i></button>`;
       }).join('') : ''}</div>
-      ${cur ? `<div class="leveldesc">${cur.taiji ? '<div class="taijiboss">☯</div>' : (cur.portrait ? D.portraitHtml(D.CARDS[cur.portrait], 44, 58) : '')}<div><b>${cur.num} · ${cur.name} · ${cur.boss}</b><span>${cur.story}</span><em>${cur.desc}</em></div></div>` : ''}
+      ${cur ? `<div class="leveldesc">${cur.taiji ? '<div class="taijiboss">☯</div>' : (cur.portrait ? D.portraitHtml(D.CARDS[cur.portrait], 44, 58) : '')}<div><b>${cur.num} · ${cur.name} · ${cur.boss}</b><span>${cur.story}</span><em>${cur.desc} · 本关三局两胜</em></div></div>` : ''}
       <div class="startbtns"><button class="primary" id="btnStart">${cur ? '入座 · ' + cur.num : '入座'}</button><button id="btnRules2">规则</button></div>
-      <div class="startfoot">${chierOpen ? '四角色均可选' : '坐北朝南先手 · 道童 / 清风 / 旁门可选；痴儿连续三次老阴解锁'} · 随机 2 属性 × 4 张出战</div>
+      <div class="startfoot">${chierOpen ? '四角色均可选' : '坐北朝南先手 · 道童 / 清风 / 旁门可选；痴儿连续三次老阴解锁'} · 每关三局两胜 · 过关后可换角色 · 随机 2 属性 × 4 张出战</div>
     </div>`;
     el.classList.add('show');
     el.querySelectorAll('.levelbtn').forEach(b => b.onclick = () => {
@@ -207,7 +210,11 @@
       if (meta) meta.selectCharacter(S.character);
       el.querySelectorAll('.charpick-btn').forEach(x => x.classList.toggle('sel', x === b));
     });
-    $('btnStart').onclick = () => { el.classList.remove('show'); beginSeason(); };
+    $('btnStart').onclick = () => {
+      S.series = { level: S.level, wins: 0, losses: 0, match: 1, resultCounted: false };
+      el.classList.remove('show');
+      beginSeason();
+    };
     $('btnRules2').onclick = showRules;
   }
 
@@ -341,6 +348,14 @@
     const win = g.winner === HUMAN;
     const el = $('screens');
     const meta = window.Meta;
+    const series = S.series;
+    if (series && !series.resultCounted) {
+      if (win) series.wins++; else series.losses++;
+      series.resultCounted = true;
+    }
+    const seriesWon = series ? series.wins >= 2 : win;
+    const seriesLost = series ? series.losses >= 2 : !win;
+    const seriesDone = seriesWon || seriesLost;
     if (meta) {
       for (const k of g.lostHuns || []) meta.loseHun(k);
       for (const k of g.pseudoPos || []) meta.markPseudoPos(k);
@@ -350,7 +365,12 @@
     const camp = window.Campaign;
     const level = camp ? camp.get(S.level) : null;
     const isFinal = S.level >= (camp ? camp.count - 1 : 0);
-    if (win && level && meta && !S.campaignCleared) { meta.clearLevel(S.level); S.campaignCleared = true; }
+    if (seriesWon && level && meta && !S.campaignCleared) {
+      meta.clearLevel(S.level);
+      meta.unlockCharacter();
+      S.campaignCleared = true;
+    }
+    if (seriesDone && meta) meta.unlockCharacter();
     const aliveH = meta ? meta.aliveHuns() : [];
     const aliveP = meta ? meta.alivePos() : [];
     const failed = meta ? (aliveH.length <= 1 && aliveP.length <= 1) : false;
@@ -398,18 +418,23 @@
         }
       }
     }
+    const seriesHtml = series ? `<div class="seriesline"><b>${seriesWon ? '本关过关' : seriesLost ? '本关失守' : '本关进行中'}</b><span>三局两胜 · 比分 ${series.wins}:${series.losses} · 第 ${series.match} 局</span></div>` : '';
     const canNext = meta && !failed && (win || S.metaSettled);
     const canLeave = !meta || win || S.metaSettled || failed;
-    const nextLabel = level ? (win ? (isFinal ? '回到主界面' : '下一关') : '重试本关') : '下一局';
+    const nextLabel = level
+      ? (!seriesDone ? (win ? '继续本关' : '再战一局')
+        : seriesWon ? (isFinal ? '完成剧情' : '下一关 · 换角色') : '重新备战 · 可换角色')
+      : '下一局';
     el.innerHTML = `<div class="panel resultpanel">
       <div class="kick">${win ? 'WIN' : 'LOSE'}</div>
       <h1>${win ? '你赢了' : '庄家赢了'}</h1>
-      <p class="lead">${win ? '庄家 8 张人物牌尽失。' : '你的 8 张人物牌尽失。'}${level ? ` · ${level.num} ${level.name} · ${level.boss}` : ''}</p>
+      <p class="lead">${win ? '庄家 8 张人物牌尽失。' : '你的 8 张人物牌尽失。'}${level ? ` · ${level.num} ${level.name} · ${level.boss}` : ''}${series ? ` · 本关 ${series.wins}:${series.losses}` : ''}</p>
       <div class="resultrow">
         <div><b>你</b><span>余 ${E.remaining(g.players[0])} / 8</span></div>
         <div><b>庄家</b><span>余 ${E.remaining(g.players[1])} / 8</span></div>
         <div><b>历时</b><span>${g.turnNo} 手 · ${g.round} 轮</span></div>
       </div>
+      ${seriesHtml}
       ${metaHtml}
       <div class="startbtns">
         ${canNext ? `<button class="primary" id="btnNext">${nextLabel}</button>` : ''}
@@ -483,14 +508,19 @@
     if (next) next.onclick = () => {
       el.classList.remove('show');
       if (level) {
-        if (win) {
-          if (isFinal) { S.g = null; showStart(); return; }
-          S.level = Math.min(S.level + 1, camp.count - 1);
+        if (!seriesDone) {
           if (meta) meta.startNextRound();
+          if (S.series) { S.series.match++; S.series.resultCounted = false; }
+          S.metaSettled = false; S.lossChoice = null;
           beginSeason();
-        } else {
-          beginSeason();
+          return;
         }
+        if (meta) meta.startNextRound();
+        if (seriesWon && !isFinal) S.level = Math.min(S.level + 1, camp.count - 1);
+        S.g = null;
+        S.series = null;
+        if (meta) meta.unlockCharacter();
+        showStart();
         return;
       }
       if (meta) meta.startNextRound();
@@ -503,7 +533,7 @@
       S.g = null; showStart();
     };
     const menu = $('btnMenu');
-    if (menu) menu.onclick = () => { el.classList.remove('show'); S.g = null; S.sel = null; showStart(); };
+    if (menu) menu.onclick = () => { el.classList.remove('show'); S.g = null; S.sel = null; S.series = null; if (meta) meta.unlockCharacter(); showStart(); };
   }
 
   function beginSeason() {
@@ -1134,7 +1164,8 @@
     const st = g.blessState ? g.blessState[HUMAN] : null;
     const trickReady = !!(b && b.kind === 'trick' && b.key !== 't_winter' && st && !st.trick);
     const seasonTxt = B ? B.seasonName(g.season) : '—';
-    $('season').innerHTML = `${g.levelName ? `<div class="levelbadge">${g.levelName} · ${g.bossName}</div>` : ''}<div class="blessbar"><span>天时 · ${seasonTxt}</span><b class="${b && b.kind === 'trick' ? 'trick' : ''}">${b ? b.name : '无'}</b>${trickReady ? `<button class="trickbtn" data-trick-start>妙计可用</button>` : ''}</div>
+    const seriesTxt = S.series ? ` · 本关 ${S.series.wins}:${S.series.losses}` : '';
+    $('season').innerHTML = `${g.levelName ? `<div class="levelbadge">${g.levelName} · ${g.bossName}${seriesTxt}</div>` : ''}<div class="blessbar"><span>天时 · ${seasonTxt}</span><b class="${b && b.kind === 'trick' ? 'trick' : ''}">${b ? b.name : '无'}</b>${trickReady ? `<button class="trickbtn" data-trick-start>妙计可用</button>` : ''}</div>
       <div class="foebless">庄家福缘：${foe ? foe.name : '无'}</div>
       <div class="seasontop"><span>场地 · 每轮开始</span><b>${g.term.name}</b></div>
       ${FIELD_RULES.map(f => `<div class="fgrow" style="--c:${ELEMENTS[f.el].color}"><b>${ELEMENTS[f.el].name}</b><span>生 ${f.gen}</span><span>同 ${f.equal}</span><span>克 ${f.over}</span></div>`).join('')}

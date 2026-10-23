@@ -97,6 +97,12 @@
     save();
     return true;
   }
+  // 一关打完后开放换人；下一关开始时再锁回当前角色
+  function unlockCharacter() {
+    cache.run.locked = false;
+    save();
+    return true;
+  }
   function recordDivine(type) {
     if (cache.character !== 'daotong') return { ok: true, unlocked: false, streak: cache.oldYinStreak };
     if (type === '老阴') {
@@ -252,7 +258,7 @@
   window.Meta = {
     HUN_KEYS, PO_KEYS,
     get, save, reload, unlocked, characterOpen, characterTag,
-    selectCharacter, recordDivine, lockCharacter,
+    selectCharacter, recordDivine, lockCharacter, unlockCharacter,
     campaign, levelUnlocked, clearLevel, cooldown, settleMatch, aliveHuns, alivePos, loseHun, losePos, gainPseudoPos, markPseudoPos, sacrifice, makePseudoSoul, makePseudoPos,
     gameMods, failRun, startNextRound, resetRun,
     accountName, storageKey,

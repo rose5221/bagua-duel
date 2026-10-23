@@ -1855,3 +1855,20 @@ html body.px-sheet-open { overflow: hidden; }
     grid-template-rows: repeat(4, 68px) !important;
   }
 }
+
+/* 三局两胜 · 关卡比分 */
+#app.mobile.pixel .seriesline {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  margin: 0 0 10px; padding: 7px 9px;
+  border: 1px solid var(--px-gold2); border-left: 4px solid var(--px-gold);
+  background: rgba(208,174,88,.08);
+  color: var(--px-paper2);
+}
+#app.mobile.pixel .seriesline b {
+  color: var(--px-gold); font-size: 12px; font-weight: normal; letter-spacing: .08em;
+}
+#app.mobile.pixel .seriesline span { font-size: 10px; }
+
+/* 结算面板数值在深色像素面板上要可读 */
+#app.mobile.pixel .screens .resultrow b { color: var(--px-gold) !important; }
+#app.mobile.pixel .screens .resultrow span { color: var(--px-paper) !important; font-family: 'FusionPixel', 'FusionPixel10', monospace !important; }
