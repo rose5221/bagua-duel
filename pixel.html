@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
   <title>八卦弈魂 · 像素</title>
-  <link rel="stylesheet" href="styles.css?v=20261023g">
-  <link rel="stylesheet" href="mobile.css?v=20261023g">
-  <link rel="stylesheet" href="pixel.css?v=20261023g">
+  <link rel="stylesheet" href="styles.css?v=20261023o">
+  <link rel="stylesheet" href="mobile.css?v=20261023o">
+  <link rel="stylesheet" href="pixel.css?v=20261023o">
 </head>
 <body class="pixelbody">
   <div id="app" class="mobile pixel">
@@ -24,9 +24,23 @@
       </div>
     </header>
 
-    <main class="stage">
+    <main class="stage" data-mpanel="hand">
+      <aside class="side left">
+        <section class="panelgroup pg-hand">
+          <div class="previewPanel" id="previewPanel"></div>
+          <div class="handwrap">
+            <div class="handhead" id="handHead"></div>
+            <div class="hand" id="hand"></div>
+          </div>
+          <div class="myinfo" id="myInfo"></div>
+        </section>
+        <section class="panelgroup pg-role">
+          <div class="mpanel charPanel"><div class="panelhead">角色 · 道童</div><div class="charskills" id="charSkills"></div></div>
+        </section>
+      </aside>
+
       <section class="arena">
-        <img class="sc-mountain" src="assets/pixel/scene/mountain.png" alt="">
+        <img class="sc-mountain" src="assets/pixel/scene/mountain.png?v=20261023o" alt="">
         <div class="scenery" aria-hidden="true">
           <img class="sc-dao" src="assets/pixel/scene/dao.png" alt="">
           <img class="sc-pine" src="assets/pixel/scene/pine.png" alt="">
@@ -55,18 +69,22 @@
         <div class="prompt" id="prompt"></div>
       </section>
 
-      <section class="mbody">
-        <div class="previewPanel" id="previewPanel"></div>
-        <div class="mpanel charPanel"><div class="panelhead">角色 · 道童</div><div class="charskills" id="charSkills"></div></div>
-        <div class="handwrap">
-          <div class="handhead" id="handHead"></div>
-          <div class="hand" id="hand"></div>
-        </div>
-        <div class="myinfo" id="myInfo"></div>
-        <div class="season" id="season"></div>
-        <button id="btnLog" class="logjump">查看牌桌记录</button>
-        <div class="mpanel historyPanel"><div class="history" id="history"></div></div>
-      </section>
+      <div class="mpanelTabs" id="mpanelTabs" role="tablist" aria-label="手机面板">
+        <button class="sel" data-mpanel="hand">手牌</button>
+        <button data-mpanel="role">角色</button>
+        <button data-mpanel="season">天时</button>
+        <button data-mpanel="log">记录</button>
+      </div>
+
+      <aside class="side right">
+        <section class="panelgroup pg-season">
+          <div class="season" id="season"></div>
+        </section>
+        <section class="panelgroup pg-log">
+          <button id="btnLog" class="logjump">查看牌桌记录</button>
+          <div class="mpanel historyPanel"><div class="history" id="history"></div></div>
+        </section>
+      </aside>
     </main>
 
     <div class="screens" id="screens"></div>
@@ -116,10 +134,10 @@
     <source src="assets/audio/deploy-ambient.m4a" type="audio/mp4">
   </audio>
 
-  <script src="src/data.js?v=20261023g"></script>
-  <script src="src/meta.js?v=20261023g"></script>
-  <script src="src/blessings.js?v=20261023g"></script>
-  <script src="src/campaign.js?v=20261023g"></script>
+  <script src="src/data.js?v=20261023o"></script>
+  <script src="src/meta.js?v=20261023o"></script>
+  <script src="src/blessings.js?v=20261023o"></script>
+  <script src="src/campaign.js?v=20261023o"></script>
   <script src="src/weapon-skins.js"></script>
   <script>
     // 像素版使用单独的像素卡图，不改动原版资源
@@ -129,9 +147,9 @@
         data-cid="${card.id}" onerror="this.onerror=null;window.DATA.portraitFallback(this)">`;
     };
   </script>
-  <script src="src/engine.js?v=20261023g"></script>
-  <script src="src/ai.js?v=20261023g"></script>
-  <script src="src/ui.js?v=20261023g"></script>
+  <script src="src/engine.js?v=20261023o"></script>
+  <script src="src/ai.js?v=20261023o"></script>
+  <script src="src/ui.js?v=20261023o"></script>
   <script src="src/pixel-sfx.js"></script>
   <script src="src/elixirs.js"></script>
   <script src="src/pixel-account.js"></script>

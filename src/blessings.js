@@ -110,16 +110,16 @@
   };
 
   const SEASON_ART = {
-    spring: 'assets/pixel/pouches/spring_peach.png?v=20261023g',
-    summer: 'assets/pixel/pouches/summer_lotus.png?v=20261023g',
-    autumn: 'assets/pixel/pouches/autumn_chrys.png?v=20261023g',
-    winter: 'assets/pixel/pouches/winter_snow.png?v=20261023g',
+    spring: 'assets/pixel/pouches/spring_peach.png?v=20261023o',
+    summer: 'assets/pixel/pouches/summer_lotus.png?v=20261023o',
+    autumn: 'assets/pixel/pouches/autumn_chrys.png?v=20261023o',
+    winter: 'assets/pixel/pouches/winter_snow.png?v=20261023o',
   };
   const TRICK_ART = {
-    spring: 'assets/pixel/pouches/trick_spring.png?v=20261023g',
-    summer: 'assets/pixel/pouches/trick_summer.png?v=20261023g',
-    autumn: 'assets/pixel/pouches/trick_autumn.png?v=20261023g',
-    winter: 'assets/pixel/pouches/trick_winter.png?v=20261023g',
+    spring: 'assets/pixel/pouches/trick_spring.png?v=20261023o',
+    summer: 'assets/pixel/pouches/trick_summer.png?v=20261023o',
+    autumn: 'assets/pixel/pouches/trick_autumn.png?v=20261023o',
+    winter: 'assets/pixel/pouches/trick_winter.png?v=20261023o',
   };
 
   const BY_KEY = {};

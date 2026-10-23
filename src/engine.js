@@ -75,6 +75,7 @@
       humanSeat, difficulty, first, turn: first, turnNo: 0,
       round: Math.max(0, (opts.startMonth || 1) - 1), month: 1, season: opts.season || '',
       levelName: opts.levelName || '', bossName: opts.bossName || '', levelIndex: opts.levelIndex || 0,
+      blessingSeason: opts.season || '', pendingBlessing: null,
       character: D.CHARACTERS.some(c => c.key === opts.character) ? opts.character : 'daotong',
       blessings: [opts.blessing || null, opts.foeBlessing || null],
       blessState: [{ round: {}, game: {}, trick: false }, { round: {}, game: {}, trick: false }],
@@ -166,6 +167,17 @@
     g.round++;
     g.month = ((g.round - 1) % 12) + 1;
     g.term = TERMS[(g.month - 1) % 12];
+    const seasonForMonth = m => m <= 3 ? 'spring' : m <= 6 ? 'summer' : m <= 9 ? 'autumn' : 'winter';
+    const seasonNow = seasonForMonth(g.month);
+    const seasonStart = { spring: '立春', summer: '立夏', autumn: '立秋', winter: '立冬' };
+    g.season = seasonNow;
+    if (g.blessingSeason && seasonNow !== g.blessingSeason) {
+      g.pendingBlessing = { season: seasonNow, term: seasonStart[seasonNow] };
+      g.blessingSeason = seasonNow;
+      log(g, -1, 'month', `节气更替 · ${seasonStart[seasonNow]} · 锦囊换新`);
+    } else if (!g.blessingSeason) {
+      g.blessingSeason = seasonNow;
+    }
     log(g, -1, 'month', `第 ${g.month} 月 · ${g.term.name}/${g.term.zhong} · 场地效果刷新`);
     for (const k of RING) {
       const u = unitAt(g, k);
@@ -928,6 +940,14 @@
     }
     return false;
   }
+  function setBlessing(g, pid, b) {
+    if (!g || g.over) return { ok: false, msg: '对局已结束' };
+    g.blessings[pid] = b || null;
+    g.blessState[pid] = { round: {}, game: {}, trick: false };
+    if (b) log(g, pid, 'term', `天时换囊 · ${b.name}：${b.text}`);
+    return { ok: true };
+  }
+
   function useTrick(g, pid, target1, target2) {
     if (!g || g.over || g.turn !== pid) return { ok: false, msg: '不是你的回合' };
     const b = blessDef(g, pid);
@@ -1017,7 +1037,7 @@
   window.Engine = {
     HUMAN, FOE, HAND, BOARD_MAX, WIN_DEAD, RING, CARDS, WEAPONS, SKILLS, TERMS,
     newGame, startTurn, startRound, endTurn, place, attack, equip, move, useSkill, forecast,
-    sign, divine, summon, useTrick,
+    sign, divine, summon, useTrick, setBlessing,
     defend, defendValid, defendTargets, applyPoison,
     skillValid, skillMatches, placement, validSlots, attackTargets, moveTargets,
     equipTargets, skillTargets, rangeEnemies, ownUnits, unitAt, ringDist, adjacent, canUnitAct,

@@ -8,7 +8,7 @@
   const TAIJI = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="48" fill="#F7F3E8" stroke="#17191B" stroke-width="2"/><path d="M50 2 A48 48 0 0 1 50 98 A24 24 0 0 1 50 50 A24 24 0 0 0 50 2 Z" fill="#17191B"/><circle cx="50" cy="26" r="7.5" fill="#F7F3E8"/><circle cx="50" cy="74" r="7.5" fill="#17191B"/></svg>';
   const TAIJI_FIRE = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="48" fill="#F7F3E8" stroke="#17191B" stroke-width="2"/><path d="M50 2 A48 48 0 0 1 50 98 A24 24 0 0 1 50 50 A24 24 0 0 0 50 2 Z" fill="#B4472F"/><circle cx="50" cy="26" r="7.5" fill="#F7F3E8"/><circle cx="50" cy="74" r="7.5" fill="#B4472F"/></svg>';
 
-  const S = { g: null, sel: null, mode: null, extra: null, preview: null, pending: null, difficulty: 'normal', character: 'daotong', charChoice: null, metaSettled: false, lossChoice: null, seasonBlessing: null, trickPicks: [], cooldownSettled: false, level: 0, campaignCleared: false, paused: false, aiTimer: 0, aiTurn: false, aiStep: 0, aiActions: [], aiDeaths: [], aiFast: false, lastTerm: '', lastRound: 0, flash: '', flashTimer: 0 };
+  const S = { g: null, sel: null, mode: null, extra: null, preview: null, pending: null, difficulty: 'normal', character: 'daotong', charChoice: null, metaSettled: false, lossChoice: null, seasonBlessing: null, seasonOffering: false, trickPicks: [], cooldownSettled: false, level: 0, campaignCleared: false, paused: false, aiTimer: 0, aiTurn: false, aiStep: 0, aiActions: [], aiDeaths: [], aiFast: false, lastTerm: '', lastRound: 0, flash: '', flashTimer: 0 };
 
   /* ---------- 天气层 ---------- */
   const FX = (function () {
@@ -518,7 +518,7 @@
     const bossBless = level && level.effect ? B.BY_KEY[level.effect] : null;
     const foeDraw = B.draw(season, false);
     const foe = level ? (bossBless || null) : foeDraw.options[Math.floor(Math.random() * foeDraw.options.length)];
-    S.seasonBlessing = { season, options: draw.options, foe, player: null, level: S.level };
+    S.seasonBlessing = { season, options: draw.options, foe, player: null, level: S.level, mode: 'start' };
     renderSeasonBlessing();
   }
   function renderSeasonBlessing() {
@@ -527,10 +527,11 @@
     if (!p) { startGame(); return; }
     const B = window.Blessings;
     const seasonName = B.seasonName(p.season);
+    const changing = p.mode === 'change';
     el.innerHTML = `<div class="panel blessingpanel">
-      <div class="kick">天时 · ${seasonName}</div>
-      <h2>三囊择一</h2>
-      <p class="blesslead">本局${seasonName}季，选一枚锦囊带入对局。${p.options.some(x => x.kind === 'trick') ? '有一枚黑金绳妙计混在其中。' : '庄家也会同时开囊。'}</p>
+      <div class="kick">天时 · ${seasonName}${changing && p.term ? ' · ' + p.term : ''}</div>
+      <h2>${changing ? '换囊' : '三囊择一'}</h2>
+      <p class="blesslead">${changing ? `${seasonName}季到了，旧锦囊失效；选一枚新锦囊，本季有效。` : `本局${seasonName}季，选一枚锦囊带入对局。`}${p.options.some(x => x.kind === 'trick') ? '有一枚黑金绳妙计混在其中。' : (changing ? '' : '庄家也会同时开囊。')}</p>
       <div class="pouchrow">${p.options.map((o, i) => `<button class="pouch artpouch ${o.kind === 'trick' ? 'trick' : ''}" data-blessing="${i}">
         <img class="pouchart" src="${o.art || ''}" alt="${o.name}" loading="lazy">
         <span class="pouchseal">${o.term || ''}</span>
@@ -538,17 +539,31 @@
         <span class="pouchtext">${o.text || ''}</span>
         ${o.kind === 'trick' ? '<i class="trickmark">妙</i>' : ''}
       </button>`).join('')}</div>
-      <div class="blessfoot">自选一枚 · 不重抽 · 本局有效 · 庄家：${p.foe ? p.foe.name : '无'}</div>
+      <div class="blessfoot">自选一枚 · 不重抽 · ${changing ? '本季有效' : '本局有效'} · 庄家：${p.foe ? p.foe.name : '无'}</div>
     </div>`;
     el.classList.add('show');
     el.querySelectorAll('[data-blessing]').forEach(btn => btn.onclick = () => {
       if (S.seasonBlessing.player) return;
+      const mode = S.seasonBlessing.mode || 'start';
       const opt = S.seasonBlessing.options[Number(btn.dataset.blessing)];
       S.seasonBlessing.player = opt;
       btn.classList.add('picked');
       el.querySelectorAll('[data-blessing]').forEach(x => x.classList.toggle('dim', x !== btn));
       showCastBanner(`${opt.name} · ${opt.text}`, opt.kind === 'trick' ? 'weapon' : 'skill');
-      setTimeout(() => { el.classList.remove('show'); startGame(); }, 650);
+      if (mode === 'change') {
+        setTimeout(() => {
+          if (!S.g) return;
+          E.setBlessing(S.g, HUMAN, opt);
+          S.g.pendingBlessing = null;
+          S.seasonOffering = false;
+          S.seasonBlessing = null;
+          el.classList.remove('show');
+          refresh();
+          if (S.g.turn === FOE && !S.g.over) startAI();
+        }, 500);
+      } else {
+        setTimeout(() => { el.classList.remove('show'); S.seasonOffering = false; startGame(); }, 650);
+      }
     });
   }
 
@@ -592,6 +607,19 @@
     };
   }
 
+  function maybeOfferSeasonChange() {
+    const g = S.g;
+    if (!g || !g.pendingBlessing || S.seasonOffering) return;
+    if ($('screens').classList.contains('show')) return;
+    const B = window.Blessings;
+    if (!B) return;
+    const season = g.pendingBlessing.season;
+    S.seasonOffering = true;
+    const draw = B.draw(season, true);
+    S.seasonBlessing = { season, term: g.pendingBlessing.term || '', options: draw.options, foe: g.blessings[1] || null, player: null, mode: 'change' };
+    renderSeasonBlessing();
+  }
+
   function startGame() {
     closeSheets();
     if (window.Meta) {
@@ -625,7 +653,7 @@
     S.aiTurn = false; S.aiStep = 0; S.aiActions = []; S.aiDeaths = []; S.aiFast = false;
     const aiBar = document.querySelector('.aibanner'); if (aiBar) aiBar.classList.remove('show');
     const aiTrack = document.querySelector('.aitrack'); if (aiTrack) aiTrack.classList.remove('show');
-    S.sel = null; S.mode = null; S.extra = null; S.preview = null; S.pending = null; S.charChoice = null; S.metaSettled = false; S.lossChoice = null; S.cooldownSettled = false; S.paused = false; S.campaignCleared = false;
+    S.sel = null; S.mode = null; S.extra = null; S.preview = null; S.pending = null; S.charChoice = null; S.metaSettled = false; S.lossChoice = null; S.cooldownSettled = false; S.paused = false; S.campaignCleared = false; S.seasonOffering = false;
     S.lastTerm = ''; S.lastRound = 0;
     updateTerm(true);
     applyBoardSkin();
@@ -639,6 +667,7 @@
     renderSeatbar(); renderStatus(); renderOppPublic(); renderMyFigure(); renderInfo();
     renderWeapons(); renderSkills(); renderCharacter(); renderBoard(); renderHand(); renderPreview();
     renderPrompt(); renderSeason(); renderHistory(); renderQuickbar();
+    maybeOfferSeasonChange();
     $('btnEnd').disabled = !(S.g.turn === HUMAN && !S.g.over);
   }
 
@@ -1533,6 +1562,7 @@
   function startAI() {
     ensureAiUi();
     if (!S.g || S.g.over || S.g.turn !== FOE) return;
+    if (S.g.pendingBlessing) return;
     if (S.aiTurn) return;
     S.aiTurn = true;
     S.aiStep = 0;
@@ -1649,7 +1679,26 @@
       if (r.kills || (key === 'sign' && r.tier === '下下')) shakeArena();
     });
     document.addEventListener('bagua:skins', () => { if (S.g) { renderWeapons(); renderBoard(); } });
-    if (new URLSearchParams(location.search).has('debug')) window.__bagua = { S, startGame, showResult, showPrep, Engine: E };
+    const mpanelTabs = $('mpanelTabs'), stageEl = document.querySelector('.stage');
+    if (mpanelTabs && stageEl) {
+      const setPanel = name => {
+        stageEl.dataset.mpanel = name;
+        mpanelTabs.querySelectorAll('[data-mpanel]').forEach(b => {
+          const on = b.dataset.mpanel === name;
+          b.classList.toggle('sel', on);
+          b.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        if (window.matchMedia('(max-width: 1199px)').matches) {
+          mpanelTabs.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      };
+      mpanelTabs.addEventListener('click', e => {
+        const b = e.target.closest('[data-mpanel]');
+        if (b) setPanel(b.dataset.mpanel);
+      });
+      setPanel('hand');
+    }
+    if (new URLSearchParams(location.search).has('debug')) window.__bagua = { S, startGame, showResult, showPrep, refresh, Engine: E };
     showStart();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

@@ -1629,6 +1629,229 @@ html body.px-sheet-open { overflow: hidden; }
     0 2px 0 #08090a, 1px 3px 0 #08090a,
     0 0 4px rgba(0,0,0,.75);
 }
-#app.mobile.pixel .unit .uname { font-size: 7px !important; line-height: 1.15; }
+#app.mobile.pixel .unit .uname { font-size: 16px !important; line-height: 1.05; }
 #app.mobile.pixel .pouch.artpouch .pouchname { font-size: 13px !important; text-shadow: -1px -1px 0 #08090a, 1px 1px 0 #08090a, 0 2px 0 #08090a, 0 0 4px #000; }
-#app.mobile.pixel .unit.guarding .uname { font-size: 6.5px !important; }
+#app.mobile.pixel .unit.guarding .uname { font-size: 15px !important; }
+
+/* 角色牌名：卡片上方悬浮的白色大字铭牌 */
+#app.mobile.pixel .unit { overflow: visible !important; }
+#app.mobile.pixel .unit .uname,
+#app.mobile.pixel .unit.guarding .uname {
+  position: absolute !important;
+  left: 50% !important;
+  top: auto !important;
+  bottom: calc(100% + 8px) !important;
+  transform: translateX(-50%) !important;
+  z-index: 80;
+  display: block !important;
+  width: max-content !important;
+  max-width: 240px !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 3px 10px 4px !important;
+  flex: none !important;
+  overflow: visible !important;
+  background: linear-gradient(#1b2121, #090d0e) !important;
+  border: 2px solid var(--px-gold2) !important;
+  box-shadow: 3px 3px 0 #000, 0 0 14px rgba(208,174,88,.25), inset 0 0 0 1px rgba(208,174,88,.18) !important;
+  color: #fffdf4 !important;
+  font-family: 'FusionPixel', 'FusionPixel10', monospace !important;
+  font-size: 16px !important;
+  line-height: 1.05 !important;
+  letter-spacing: .06em;
+  white-space: nowrap !important;
+  pointer-events: none;
+  -webkit-text-stroke: 0 !important;
+  text-shadow: none !important;
+}
+#app.mobile.pixel .unit .uname::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 9px solid var(--px-gold2);
+  filter: drop-shadow(1px 2px 0 #000);
+}
+#app.mobile.pixel .unit.mine .uname { border-color: var(--px-red) !important; }
+#app.mobile.pixel .unit.foe .uname { border-color: var(--px-cyan) !important; }
+#app.mobile.pixel .unit.mine .uname::after { border-top-color: var(--px-red); }
+#app.mobile.pixel .unit.foe .uname::after { border-top-color: var(--px-cyan); }
+
+/* 有牌时把卦位标签抬到名牌之上，避免遮住卡名 */
+#app.mobile.pixel .slot:has(.unit) .slothead {
+  transform: translateY(-34px);
+}
+
+/* 手牌名：深色小铭牌上的白色大字 */
+#app.mobile.pixel .hand .htile .hname {
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  top: auto !important;
+  transform: none !important;
+  flex: 1 1 auto !important;
+  font-size: 16px !important;
+  line-height: 1.15 !important;
+  align-self: flex-start !important;
+  margin-top: 5px;
+  padding: 2px 4px !important;
+  background: #0a0f10 !important;
+  border: 1px solid var(--ec, var(--px-gold2)) !important;
+  box-shadow: 2px 2px 0 #000 !important;
+  color: #ffffff !important;
+  text-align: center !important;
+  letter-spacing: .04em;
+  -webkit-text-stroke: 0 !important;
+  text-shadow: none !important;
+}
+
+/* ================= 桌面三栏 / 手机页签 ================= */
+#app.mobile.pixel .side { min-width: 0; }
+#app.mobile.pixel .panelgroup { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+#app.mobile.pixel .mpanelTabs { display: none; }
+
+@media (min-width: 1200px) {
+  html, body { height: 100%; overflow: hidden; }
+  #app.mobile.pixel { height: 100vh; display: flex; flex-direction: column; padding-bottom: 0; overflow: hidden; }
+  #app.mobile.pixel .topbar { position: static; flex: 0 0 46px; }
+  #app.mobile.pixel .stage {
+    flex: 1 1 auto; min-height: 0; height: auto;
+    display: grid;
+    grid-template-columns: minmax(300px, 380px) minmax(0, 1fr) minmax(300px, 380px);
+    gap: 10px; padding: 10px 10px 82px;
+    overflow: hidden;
+  }
+  #app.mobile.pixel .arena { min-height: 0; height: 100%; overflow: hidden; }
+  #app.mobile.pixel .side {
+    display: flex; flex-direction: column; gap: 8px;
+    min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+    background: #080d0e;
+    border: 2px solid var(--px-stone2);
+    box-shadow: 3px 3px 0 #000;
+    padding: 8px;
+  }
+  #app.mobile.pixel .side.left .pg-role { order: 1; }
+  #app.mobile.pixel .side.left .pg-hand { order: 2; }
+  #app.mobile.pixel .side.right .pg-season { order: 1; }
+  #app.mobile.pixel .side.right .pg-log { order: 2; flex: 1 1 auto; min-height: 0; }
+  #app.mobile.pixel .side.right .historyPanel { height: auto !important; flex: 1 1 auto; min-height: 240px; }
+  #app.mobile.pixel .side.left .hand {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-template-rows: repeat(3, 68px) !important;
+    gap: 4px;
+  }
+  #app.mobile.pixel .side.left .hand .htile { height: 68px !important; }
+  #app.mobile.pixel .side.left .handwrap { flex: 0 0 auto; }
+  #app.mobile.pixel .side.left .previewPanel { flex: 0 0 auto; min-height: 92px; }
+  #app.mobile.pixel .side.left .myinfo { flex: 0 0 auto; }
+  #app.mobile.pixel .side.right .logjump { flex: 0 0 auto; width: 100%; }
+  #app.mobile.pixel .side::-webkit-scrollbar { width: 6px; }
+  #app.mobile.pixel .side::-webkit-scrollbar-thumb { background: var(--px-gold2); }
+  #app.mobile.pixel .side::-webkit-scrollbar-track { background: #050809; }
+}
+
+@media (max-width: 1199px) {
+  #app.mobile.pixel .stage {
+    display: flex; flex-direction: column;
+    padding: 0; overflow: visible;
+  }
+  #app.mobile.pixel .arena { order: 1; }
+  #app.mobile.pixel .side { display: contents; }
+  #app.mobile.pixel .hand {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    grid-template-rows: repeat(2, 68px) !important;
+  }
+  #app.mobile.pixel .mpanelTabs {
+    order: 2;
+    position: sticky; top: 46px; z-index: 26;
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 3px; padding: 5px 8px;
+    background: rgba(8,12,13,.97);
+    border-top: 2px solid var(--px-stone2);
+    border-bottom: 2px solid var(--px-gold2);
+    box-shadow: 0 3px 0 #000;
+    scroll-margin-top: 46px;
+  }
+  #app.mobile.pixel .mpanelTabs button {
+    background: #0c1213; color: var(--px-paper2);
+    border: 2px solid var(--px-stone2);
+    padding: 6px 4px; font-size: 11px;
+  }
+  #app.mobile.pixel .mpanelTabs button.sel {
+    color: #101312; background: var(--px-gold);
+    border-color: var(--px-gold);
+  }
+  #app.mobile.pixel .panelgroup {
+    order: 3;
+    display: none;
+    padding: 7px 8px 88px;
+    gap: 7px;
+  }
+  #app.mobile.pixel .stage[data-mpanel="hand"] .pg-hand,
+  #app.mobile.pixel .stage[data-mpanel="role"] .pg-role,
+  #app.mobile.pixel .stage[data-mpanel="season"] .pg-season,
+  #app.mobile.pixel .stage[data-mpanel="log"] .pg-log { display: flex; }
+  #app.mobile.pixel .pg-log .historyPanel { height: min(58vh, 460px) !important; }
+  #app.mobile.pixel .pg-log .logjump { align-self: flex-start; }
+}
+
+@media (max-width: 1199px) {
+  #app.mobile.pixel .brand { flex: 0 0 auto; font-size: 12px; white-space: nowrap; }
+  #app.mobile.pixel .brand span { display: none !important; }
+  #app.mobile.pixel .status { display: none !important; }
+  #app.mobile.pixel .topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 35; height: 46px; overflow: hidden; }
+  #app.mobile.pixel { padding-top: 46px; }
+  #app.mobile.pixel .topactions {
+    flex: 1 1 auto; min-width: 0;
+    justify-content: flex-end; flex-wrap: nowrap; gap: 2px;
+  }
+  #app.mobile.pixel .topactions button,
+  #app.mobile.pixel .topactions .tolink { padding: 3px 4px; font-size: 8px; }
+}
+
+/* 攻/血改成独立的大号圆形徽章，浮在卡牌图层上方 */
+#app.mobile.pixel .unit .ustats {
+  position: absolute !important;
+  left: -12px !important;
+  right: -12px !important;
+  bottom: -12px !important;
+  z-index: 96;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  pointer-events: none;
+}
+#app.mobile.pixel .unit .ustats span {
+  width: 27px !important;
+  height: 27px !important;
+  min-width: 27px !important;
+  border-radius: 50% !important;
+  border: 2px solid #050708 !important;
+  display: grid !important;
+  place-items: center !important;
+  font-family: 'FusionPixel', 'FusionPixel10', monospace !important;
+  font-size: 13px !important;
+  line-height: 1 !important;
+  font-weight: normal !important;
+  box-shadow: 2px 2px 0 #000, inset 0 0 0 1px rgba(255,255,255,.16) !important;
+}
+#app.mobile.pixel .unit .ustats .a {
+  background: var(--px-red) !important;
+  color: #ffffff !important;
+}
+#app.mobile.pixel .unit .ustats .h {
+  background: var(--px-paper) !important;
+  color: #111516 !important;
+}
+
+@media (max-width: 599px) {
+  #app.mobile.pixel .hand {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-rows: repeat(4, 68px) !important;
+  }
+}
