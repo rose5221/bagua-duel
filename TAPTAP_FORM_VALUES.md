@@ -20,7 +20,7 @@
 
 ## 游戏下载和获取
 
-- 游戏包：上传 `八卦弈魂-1.0-portrait.apk`
+- 游戏包：上传 `八卦弈魂-1.0.apk`
 - 包名：`com.huli.baguayihun`
 - 版本：`1.0.0` / versionCode `1`
 - 测试方式：先内部测试

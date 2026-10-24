@@ -2,7 +2,7 @@
 
 ## 1. 已准备
 
-- APK：`/Users/huli/Desktop/八卦弈魂-TapTap/八卦弈魂-1.0-portrait.apk`
+- APK：`/Users/huli/Desktop/八卦弈魂-TapTap/八卦弈魂-1.0.apk`
 - 包名：`com.huli.baguayihun`
 - 版本：`1.0 / versionCode 1`
 - 方向：竖屏

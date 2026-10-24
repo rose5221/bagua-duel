@@ -10,7 +10,7 @@
 - 技术栈：Capacitor + Android WebView
 - 签名文件：`/Users/huli/Desktop/八卦弈魂-TapTap/bagua-release.jks`
 - 签名别名：`bagua`
-- 本地 APK：`/Users/huli/Desktop/八卦弈魂-TapTap/八卦弈魂-1.0-portrait.apk`
+- 本地 APK：`/Users/huli/Desktop/八卦弈魂-TapTap/八卦弈魂-1.0.apk`
 
 > keystore 和密码只保存在本机，不能丢；以后更新必须使用同一个签名。
 
