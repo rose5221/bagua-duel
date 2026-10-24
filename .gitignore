@@ -6,3 +6,6 @@ wuxing-flat-backup/
 assets/cards_src/
 assets/cards_raw/
 assets/audio/tiandi.mp3
+
+# 本地 APK 下载副本
+downloads/

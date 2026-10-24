@@ -29,7 +29,7 @@
 ## 游戏资料
 
 - 图标：`icon-512.png`
-- 截图：`screenshots/01-start.png`、`02-card-detail.png`、`03-match.png`
+- 截图：`screenshots/01-board.png`、`02-card-detail.png`、`03-board-hand.png`
 - 宣传图：`promo-16x9.png`
 - 视频：需要补 15 秒以上实机视频
 - 简介：见 `TAPTAP_SUBMISSION.md`

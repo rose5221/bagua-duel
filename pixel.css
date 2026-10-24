@@ -2187,3 +2187,6 @@ html.tap-layout #app.mobile.pixel .startpanel .startbtns button { padding: 7px 1
   #app.mobile.pixel .startpanel .leveldesc > div span { display: none; }
   #app.mobile.pixel .startpanel .startfoot { font-size: 8px; line-height: 1.5; }
 }
+
+/* 未选择目标时不占一块空白介绍区；选中后仍显示完整卡牌介绍 */
+#app.mobile.pixel .previewPanel:has(.pvhint) { display: none !important; }
