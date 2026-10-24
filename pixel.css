@@ -1976,3 +1976,214 @@ html body.px-sheet-open { overflow: hidden; }
   color: var(--px-paper2); font-size: 9.5px; line-height: 1.5;
   padding: 2px 0 4px; border-bottom: 1px dashed #293335;
 }
+
+/* ================= TapTap 横屏触控布局 ================= */
+html.tap-layout, html.tap-layout body {
+  height: 100%; overflow: hidden; overscroll-behavior: none;
+}
+html.tap-layout #app.mobile.pixel {
+  height: 100vh; display: flex; flex-direction: column;
+  padding: 0; padding-top: 0; overflow: hidden;
+  -webkit-user-select: none; user-select: none;
+}
+html.tap-layout #app.mobile.pixel .topbar {
+  position: static; flex: 0 0 42px; height: 42px;
+  padding: 0 8px; overflow: hidden;
+}
+html.tap-layout #app.mobile.pixel .brand { font-size: 12px; white-space: nowrap; }
+html.tap-layout #app.mobile.pixel .brand span { display: none !important; }
+html.tap-layout #app.mobile.pixel .status { display: block; flex: 1 1 auto; font-size: 9px; text-align: right; }
+html.tap-layout #app.mobile.pixel .seatbar { display: none; }
+html.tap-layout #app.mobile.pixel .topactions { flex: 0 0 auto; gap: 2px; }
+html.tap-layout #app.mobile.pixel .topactions button { padding: 3px 5px; font-size: 9px; }
+
+html.tap-layout #app.mobile.pixel .stage {
+  flex: 1 1 auto; min-height: 0; height: auto;
+  display: grid;
+  grid-template-columns: 225px minmax(0, 1fr) 255px;
+  grid-template-rows: minmax(0, 1fr);
+  gap: 8px; padding: 8px 8px 132px; overflow: hidden;
+}
+html.tap-layout #app.mobile.pixel .arena {
+  grid-column: 2; grid-row: 1; min-height: 0; height: 100%;
+  overflow: hidden; padding-top: 0;
+}
+html.tap-layout #app.mobile.pixel .side {
+  min-height: 0; height: auto; overflow-y: auto; overscroll-behavior: contain;
+  display: flex; flex-direction: column; gap: 6px;
+  background: #080d0e; border: 2px solid var(--px-stone2);
+  box-shadow: 3px 3px 0 #000; padding: 6px;
+}
+html.tap-layout #app.mobile.pixel .side.left { grid-column: 1; grid-row: 1; }
+html.tap-layout #app.mobile.pixel .side.right { grid-column: 3; grid-row: 1; }
+html.tap-layout #app.mobile.pixel .mpanelTabs { display: none !important; }
+html.tap-layout #app.mobile.pixel .side.left .pg-role { display: flex; order: 1; }
+html.tap-layout #app.mobile.pixel .side.left .pg-hand { display: contents; }
+html.tap-layout #app.mobile.pixel .side.left .previewPanel:has(.pvhint) { display: none !important; }
+html.tap-layout #app.mobile.pixel .side.left .previewPanel {
+  display: flex; position: fixed; left: 8px; bottom: 140px;
+  width: 380px; max-width: 34vw; min-height: 96px; z-index: 33;
+  box-shadow: 3px 3px 0 #000;
+}
+html.tap-layout #app.mobile.pixel .side.left .myinfo { display: none; }
+html.tap-layout #app.mobile.pixel .side.right .pg-season { display: flex; order: 1; }
+html.tap-layout #app.mobile.pixel .side.right .pg-log { display: flex; order: 2; flex: 1 1 auto; min-height: 0; }
+html.tap-layout #app.mobile.pixel .side.right .historyPanel { height: auto !important; min-height: 180px; flex: 1 1 auto; }
+html.tap-layout #app.mobile.pixel .side.right .logjump { flex: 0 0 auto; width: 100%; }
+html.tap-layout #app.mobile.pixel .side::-webkit-scrollbar { width: 5px; }
+html.tap-layout #app.mobile.pixel .side::-webkit-scrollbar-thumb { background: var(--px-gold2); }
+
+html.tap-layout #app.mobile.pixel .boardwrap {
+  width: 370px; height: 370px; flex-basis: 370px;
+  margin: 2px auto 0;
+}
+html.tap-layout #app.mobile.pixel .slot {
+  transform: translate(-50%, -50%) rotate(var(--a)) translateY(-137px) rotate(calc(-1 * var(--a)));
+}
+html.tap-layout #app.mobile.pixel .opppublic { min-height: 66px; height: 66px; }
+html.tap-layout #app.mobile.pixel .figure.me { height: 40px; }
+html.tap-layout #app.mobile.pixel .gearhint { font-size: 9px; }
+html.tap-layout #app.mobile.pixel .prompt { flex-basis: 24px; font-size: 10px; }
+
+/* 手牌横排固定底部 */
+html.tap-layout #app.mobile.pixel .handwrap {
+  position: fixed; left: 8px; right: 8px; bottom: 8px; z-index: 34;
+  height: 122px; padding: 4px; background: #0b1011;
+  border: 2px solid var(--px-stone2); box-shadow: 3px 3px 0 #000;
+}
+html.tap-layout #app.mobile.pixel .handhead { flex-basis: 16px; font-size: 9px; }
+html.tap-layout #app.mobile.pixel .side.left .handwrap > .hand {
+  display: grid !important;
+  grid-template-columns: repeat(8, minmax(0, 1fr)) !important;
+  grid-template-rows: 98px !important;
+  gap: 4px; height: 98px; width: 100%;
+}
+html.tap-layout #app.mobile.pixel .side.left .handwrap .htile {
+  height: 98px !important; padding: 2px !important; gap: 3px;
+}
+html.tap-layout #app.mobile.pixel .side.left .handwrap .htile .hport {
+  flex: 0 0 44px !important; width: 44px !important; height: 92px !important; min-height: 92px !important;
+}
+html.tap-layout #app.mobile.pixel .side.left .handwrap .htile .hname {
+  font-size: 14px !important; margin-top: 4px; padding: 1px 3px !important;
+}
+html.tap-layout #app.mobile.pixel .side.left .handwrap .htile .hstats { font-size: 9px; }
+html.tap-layout #app.mobile.pixel .side.left .handwrap .htile .hstats i { min-width: 22px; height: 16px; line-height: 16px; }
+
+html.tap-layout #app.mobile.pixel .quickbar {
+  left: 50%; right: auto; bottom: 138px; width: auto;
+  transform: translateX(-50%); justify-content: center; gap: 6px;
+  align-items: flex-end;
+}
+html.tap-layout #app.mobile.pixel .qbtn { width: 50px; height: 48px; }
+html.tap-layout #app.mobile.pixel .qend { width: 62px; height: 42px; }
+
+html.tap-layout #app.mobile.pixel .px-sheet { padding-bottom: 134px; }
+html.tap-layout #app.mobile.pixel .px-sheet .px-sheet-panel { max-height: calc(100vh - 150px); }
+
+@media (max-height: 620px) {
+  html.tap-layout #app.mobile.pixel .topbar { flex-basis: 38px; height: 38px; }
+  html.tap-layout #app.mobile.pixel .stage { padding-bottom: 116px; }
+  html.tap-layout #app.mobile.pixel .handwrap { height: 108px; }
+  html.tap-layout #app.mobile.pixel .side.left .handwrap > .hand { grid-template-rows: 86px !important; height: 86px; }
+  html.tap-layout #app.mobile.pixel .side.left .handwrap .htile { height: 86px !important; }
+  html.tap-layout #app.mobile.pixel .side.left .handwrap .htile .hport { height: 80px !important; min-height: 80px !important; }
+  html.tap-layout #app.mobile.pixel .boardwrap { width: 310px; height: 310px; flex-basis: 310px; }
+  html.tap-layout #app.mobile.pixel .slot { transform: translate(-50%, -50%) rotate(var(--a)) translateY(-115px) rotate(calc(-1 * var(--a))); }
+  html.tap-layout #app.mobile.pixel .quickbar { bottom: 120px; }
+  html.tap-layout #app.mobile.pixel .side.left .previewPanel:has(.pvhint) { display: none !important; }
+html.tap-layout #app.mobile.pixel .side.left .previewPanel { bottom: 140px; }
+}
+
+/* TapTap 横屏开始界面：压缩成可一屏操作的关卡面板 */
+html.tap-layout #app.mobile.pixel .screens { padding: 10px; align-items: flex-start; }
+html.tap-layout #app.mobile.pixel .startpanel {
+  width: min(1100px, 96vw); max-height: calc(100vh - 20px);
+  padding: 14px 20px 12px; display: flex; flex-direction: column; gap: 4px;
+}
+html.tap-layout #app.mobile.pixel .startpanel .lead,
+html.tap-layout #app.mobile.pixel .startpanel .startrow,
+html.tap-layout #app.mobile.pixel .startpanel .starttrigrams,
+html.tap-layout #app.mobile.pixel .startpanel .startfoot { display: none !important; }
+html.tap-layout #app.mobile.pixel .startpanel .kick { font-size: 9px; }
+html.tap-layout #app.mobile.pixel .startpanel h1 { font-size: 34px; margin: 2px 0 5px; }
+html.tap-layout #app.mobile.pixel .startpanel .charhead,
+html.tap-layout #app.mobile.pixel .startpanel .levelhead { margin-top: 3px; font-size: 11px; }
+html.tap-layout #app.mobile.pixel .startpanel .charpick {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 5px !important; margin-bottom: 2px;
+}
+html.tap-layout #app.mobile.pixel .startpanel .charpick-btn { min-height: 54px; padding: 5px 7px; }
+html.tap-layout #app.mobile.pixel .startpanel .charpick-btn span { display: none; }
+html.tap-layout #app.mobile.pixel .startpanel .charpick-btn b { font-size: 13px; }
+html.tap-layout #app.mobile.pixel .startpanel .charpick-btn i { font-size: 8px; }
+html.tap-layout #app.mobile.pixel .startpanel .charstreak { font-size: 9px; line-height: 1.4; margin: 0 0 2px; }
+html.tap-layout #app.mobile.pixel .startpanel .runmeta { font-size: 9px; margin: 0 0 2px; }
+html.tap-layout #app.mobile.pixel .startpanel .levelpick { gap: 4px; margin-bottom: 4px; }
+html.tap-layout #app.mobile.pixel .startpanel .levelbtn { min-height: 52px; padding: 5px 7px; }
+html.tap-layout #app.mobile.pixel .startpanel .levelbtn b { font-size: 12px; }
+html.tap-layout #app.mobile.pixel .startpanel .levelbtn span { font-size: 10px; }
+html.tap-layout #app.mobile.pixel .startpanel .levelbtn i { font-size: 8px; }
+html.tap-layout #app.mobile.pixel .startpanel .leveldesc { padding: 7px 9px; gap: 10px; min-height: 60px; }
+html.tap-layout #app.mobile.pixel .startpanel .leveldesc > div span { display: none; }
+html.tap-layout #app.mobile.pixel .startpanel .leveldesc > div b { font-size: 13px; }
+html.tap-layout #app.mobile.pixel .startpanel .leveldesc > div em { font-size: 10px; line-height: 1.45; }
+html.tap-layout #app.mobile.pixel .startpanel .leveldesc .taijiboss { width: 54px; height: 54px; font-size: 32px; }
+html.tap-layout #app.mobile.pixel .startpanel .startbtns { margin-top: 4px; }
+html.tap-layout #app.mobile.pixel .startpanel .startbtns button { padding: 7px 16px; font-size: 12px; }
+
+/* 真实手机横屏常见 800–960 CSS px 宽：再压缩一档 */
+@media (orientation: landscape) and (max-height: 600px) {
+  html.tap-layout #app.mobile.pixel .topbar { flex-basis: 36px; height: 36px; padding: 0 6px; }
+  html.tap-layout #app.mobile.pixel .stage {
+    grid-template-columns: 170px minmax(0, 1fr) 195px;
+    gap: 5px; padding: 4px 6px 100px;
+  }
+  html.tap-layout #app.mobile.pixel .side { padding: 4px; gap: 4px; }
+  html.tap-layout #app.mobile.pixel .boardwrap { width: 190px; height: 190px; flex-basis: 190px; margin-top: 0; }
+  html.tap-layout #app.mobile.pixel .slot {
+    transform: translate(-50%, -50%) rotate(var(--a)) translateY(-70px) rotate(calc(-1 * var(--a)));
+  }
+  html.tap-layout #app.mobile.pixel .opppublic { height: 36px; min-height: 36px; }
+  html.tap-layout #app.mobile.pixel .figure.me { height: 18px; }
+  html.tap-layout #app.mobile.pixel .gearhint { display: none; }
+  html.tap-layout #app.mobile.pixel .prompt { display: none !important; }
+  html.tap-layout #app.mobile.pixel .handwrap { height: 84px; bottom: 6px; left: 6px; right: 6px; }
+  html.tap-layout #app.mobile.pixel .handhead { flex-basis: 12px; font-size: 8px; }
+  html.tap-layout #app.mobile.pixel .side.left .handwrap > .hand { grid-template-rows: 72px !important; height: 72px; }
+  html.tap-layout #app.mobile.pixel .side.left .handwrap .htile { height: 72px !important; }
+  html.tap-layout #app.mobile.pixel .side.left .handwrap .htile .hport { height: 66px !important; min-height: 66px !important; flex-basis: 38px !important; width: 38px !important; }
+  html.tap-layout #app.mobile.pixel .side.left .handwrap .htile .hname { font-size: 12px !important; margin-top: 2px; }
+  html.tap-layout #app.mobile.pixel .quickbar { left: 50%; right: auto; bottom: 92px; gap: 4px; transform: translateX(-50%); justify-content: center; }
+  html.tap-layout #app.mobile.pixel .qbtn { width: 42px; height: 40px; }
+  html.tap-layout #app.mobile.pixel .qend { width: 54px; height: 36px; }
+  html.tap-layout #app.mobile.pixel .startpanel { padding: 8px 12px; gap: 2px; }
+  html.tap-layout #app.mobile.pixel .startpanel h1 { font-size: 24px; margin: 0 0 2px; }
+  html.tap-layout #app.mobile.pixel .startpanel .charpick-btn { min-height: 38px; padding: 3px 5px; }
+  html.tap-layout #app.mobile.pixel .startpanel .charpick-btn b { font-size: 11px; }
+  html.tap-layout #app.mobile.pixel .startpanel .charstreak,
+  html.tap-layout #app.mobile.pixel .startpanel .runmeta { font-size: 8px; }
+  html.tap-layout #app.mobile.pixel .startpanel .levelbtn { min-height: 38px; padding: 3px 5px; }
+  html.tap-layout #app.mobile.pixel .startpanel .levelbtn b { font-size: 10px; }
+  html.tap-layout #app.mobile.pixel .startpanel .levelbtn span { font-size: 9px; }
+  html.tap-layout #app.mobile.pixel .startpanel .levelbtn i { font-size: 7px; }
+  html.tap-layout #app.mobile.pixel .startpanel .leveldesc { display: none; }
+  html.tap-layout #app.mobile.pixel .startpanel .startbtns { margin-top: 2px; }
+}
+
+/* 竖屏手机开始页：主操作优先，减少长页滚动 */
+@media (max-width: 599px) {
+  #app.mobile.pixel .screens { padding: 8px; align-items: flex-start; }
+  #app.mobile.pixel .startpanel { padding: 16px 14px 14px; max-height: calc(100vh - 16px); }
+  #app.mobile.pixel .startpanel .lead,
+  #app.mobile.pixel .startpanel .startrow,
+  #app.mobile.pixel .startpanel .starttrigrams { display: none !important; }
+  #app.mobile.pixel .startpanel h1 { font-size: 32px; margin: 4px 0 8px; }
+  #app.mobile.pixel .startpanel .charpick { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 5px !important; }
+  #app.mobile.pixel .startpanel .charpick-btn { min-height: 58px; padding: 5px 7px; }
+  #app.mobile.pixel .startpanel .charpick-btn span { font-size: 8px; }
+  #app.mobile.pixel .startpanel .levelpick { gap: 4px; }
+  #app.mobile.pixel .startpanel .levelbtn { min-height: 54px; padding: 5px 6px; }
+  #app.mobile.pixel .startpanel .leveldesc > div span { display: none; }
+  #app.mobile.pixel .startpanel .startfoot { font-size: 8px; line-height: 1.5; }
+}
