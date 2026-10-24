@@ -1,5 +1,11 @@
 # TapTap 后台字段填写值
 
+## 开发者/隐私信息
+
+- 厂商/运营主体：异世界的高手的工作室
+- 联系邮箱：193662091@qq.com
+- 隐私政策：https://bagua-duel.onrender.com/privacy.html
+
 ## 基础信息
 
 - 游戏分类：卡牌
