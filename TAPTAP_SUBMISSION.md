@@ -9,7 +9,7 @@
 - 图标：`/Users/huli/Desktop/八卦弈魂-TapTap/icon-512.png`（512×512）
 - 截图：`screenshots/01-start.png`、`02-card-detail.png`、`03-match.png`（720×1600）
 - 宣传图：`promo-16x9.png`（1920×1080）
-- 隐私政策：部署后使用 `https://bagua-duel.onrender.com/privacy.html`（或 GitHub Pages 同路径）
+- 隐私政策：`https://bagua-duel.onrender.com/privacy.html`（运营者：异世界的高手的工作室；邮箱：193662091@qq.com）
 - 构建说明：`TAPTAP_BUILD.md`
 
 ## 2. 商店文案（可直接粘贴）
