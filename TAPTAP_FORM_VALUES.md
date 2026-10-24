@@ -31,7 +31,8 @@
 - 图标：`icon-512.png`
 - 截图：`screenshots/01-board.png`、`02-card-detail.png`、`03-board-hand.png`
 - 宣传图：`promo-16x9.png`
-- 视频：需要补 15 秒以上实机视频
+- 宣传片：`宣传片-16x9.mp4`
+- 视频：`实机演示-竖屏.mp4`（22 秒，1080×2400）
 - 简介：见 `TAPTAP_SUBMISSION.md`
 - 分类：卡牌 / 策略 / 单机
 - 标签：像素、国风、卡牌对战、策略、Roguelike
