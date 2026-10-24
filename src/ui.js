@@ -11,6 +11,22 @@
   const S = { g: null, sel: null, mode: null, extra: null, preview: null, pending: null, difficulty: 'normal', character: 'daotong', charChoice: null, metaSettled: false, lossChoice: null, seasonBlessing: null, seasonOffering: false, trickPicks: [], cooldownSettled: false, level: 0, campaignCleared: false, levelMatch: 1, levelOver: false, levelWon: false, foeSouls: null, bossLossApplied: false, matchPlayerPre: null, matchFoePre: null, paused: false, aiTimer: 0, aiTurn: false, aiStep: 0, aiActions: [], aiDeaths: [], aiFast: false, lastTerm: '', lastRound: 0, flash: '', flashTimer: 0 };
   const SOUL_NAMES = { tian: '天魂', di: '地魂', ren: '人魂' };
   const POS_NAMES = { shigou: '尸狗', fushi: '伏矢', queyin: '雀阴', tunzei: '吞贼', feidu: '非毒', chuhui: '除秽', choufei: '臭肺' };
+  const ORIENT_KEY = 'bagua.orientation';
+  const getOrientation = () => {
+    try { return localStorage.getItem(ORIENT_KEY) === 'landscape' ? 'landscape' : 'portrait'; } catch { return 'portrait'; }
+  };
+  function setOrientation(mode, silent) {
+    const m = mode === 'landscape' ? 'landscape' : 'portrait';
+    document.documentElement.classList.toggle('tap-layout', m === 'landscape');
+    document.documentElement.dataset.orientation = m;
+    try { localStorage.setItem(ORIENT_KEY, m); } catch {}
+    if (window.AndroidOrientation && window.AndroidOrientation.setOrientation) {
+      try { window.AndroidOrientation.setOrientation(m); } catch {}
+    } else if (screen.orientation && screen.orientation.lock) {
+      try { screen.orientation.lock(m).catch(() => {}); } catch {}
+    }
+    if (!silent && S.g) setTimeout(() => refresh(), 80);
+  }
   const freshFoeSouls = () => ({ h: (D.HUNS || []).map(x => x.key), p: (D.POS || []).map(x => x.key) });
   const SOUL_EFFECTS = {
     tian: { good: '己方入场攻 +50%', bad: '己方入场攻 -50%' },
@@ -218,7 +234,7 @@
         return `<button class="levelbtn ${S.level === i ? 'sel' : ''} ${cleared ? 'cleared' : ''}" data-level="${i}" ${open ? '' : 'disabled'}><b>${lv.num}</b><span>${lv.name}</span><i>${cleared ? '已过' : open ? lv.boss : '未解锁'}</i></button>`;
       }).join('') : ''}</div>
       ${cur ? `<div class="leveldesc">${cur.taiji ? '<div class="taijiboss">☯</div>' : (cur.portrait ? D.portraitHtml(D.CARDS[cur.portrait], 44, 58) : '')}<div><b>${cur.num} · ${cur.name} · ${cur.boss}</b><span>${cur.story}</span><em>${cur.desc} · 本关双方各 3 魂 7 魄，小局胜败会削减魂灯，打空者败</em></div></div>` : ''}
-      <div class="startbtns"><button class="primary" id="btnStart">${canResume ? '继续本关 · ' + cur.num : cur ? '入座 · ' + cur.num : '入座'}</button><button id="btnRules2">规则</button></div>
+      <div class="startbtns"><button class="primary" id="btnStart">${canResume ? '继续本关 · ' + cur.num : cur ? '入座 · ' + cur.num : '入座'}</button><button id="btnRules2">规则</button><button id="btnOrient2">${getOrientation() === 'landscape' ? '竖屏' : '横屏'}</button></div>
       <div class="startfoot">${chierOpen ? '四角色均可选' : '坐北朝南先手 · 道童 / 清风 / 旁门可选；痴儿连续三次老阴解锁'} · 每关开始前选人物 · 关内锁定 · 过关/失守后可换角色 · 随机 2 属性 × 4 张出战</div>
     </div>`;
     el.classList.add('show');
@@ -275,6 +291,12 @@
       startLevel();
     };
     $('btnRules2').onclick = showRules;
+    const orientBtn = $('btnOrient2');
+    if (orientBtn) orientBtn.onclick = () => {
+      const next = getOrientation() === 'landscape' ? 'portrait' : 'landscape';
+      setOrientation(next);
+      orientBtn.textContent = next === 'landscape' ? '竖屏' : '横屏';
+    };
   }
 
   function prepValid() {
@@ -779,6 +801,7 @@
     el.innerHTML = `<div class="panel pausepanel">
       <div class="kick">八卦弈魂</div><h2>暂停</h2>
       <p class="blesslead">${S.g.turn === FOE ? '庄家正在行动；继续后会从当前步骤接着播放。' : '牌局已暂停。'}</p>
+      <div class="orientrow"><span>屏幕方向</span><button data-orient="portrait" class="${getOrientation() === 'portrait' ? 'sel' : ''}">竖屏</button><button data-orient="landscape" class="${getOrientation() === 'landscape' ? 'sel' : ''}">横屏</button></div>
       <div class="startbtns"><button class="primary" id="pauseResume">继续</button><button id="pauseRestart">重新开始</button><button id="pauseHome">回到主界面</button></div>
     </div>`;
     el.classList.add('show');
@@ -808,6 +831,10 @@
       S.g = null; S.seasonBlessing = null;
       showStart();
     };
+    el.querySelectorAll('[data-orient]').forEach(b => b.onclick = () => {
+      setOrientation(b.dataset.orient);
+      el.querySelectorAll('[data-orient]').forEach(x => x.classList.toggle('sel', x === b));
+    });
   }
 
   function maybeOfferSeasonChange() {
@@ -1937,6 +1964,9 @@
       setPanel('hand');
     }
     window.addEventListener('beforeunload', () => { if (S.g && !S.levelOver) saveCurrentLevel(); });
+    // 恢复上次屏幕方向；?tap=1 用于桌面横屏预览
+    const forcedTap = new URLSearchParams(location.search).has('tap');
+    setOrientation(forcedTap ? 'landscape' : getOrientation(), true);
     if (new URLSearchParams(location.search).has('debug')) window.__bagua = { S, startGame, showResult, showPrep, refresh, Engine: E };
     showStart();
   }

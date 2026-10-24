@@ -2190,3 +2190,21 @@ html.tap-layout #app.mobile.pixel .startpanel .startbtns button { padding: 7px 1
 
 /* 未选择目标时不占一块空白介绍区；选中后仍显示完整卡牌介绍 */
 #app.mobile.pixel .previewPanel:has(.pvhint) { display: none !important; }
+
+
+/* 屏幕方向选择 */
+#app.mobile.pixel .orientrow {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  margin: 8px 0 10px; padding: 6px;
+  border: 1px solid var(--px-stone2); background: #0b1011;
+  color: var(--px-paper2); font-size: 11px;
+}
+#app.mobile.pixel .orientrow span { margin-right: 4px; }
+#app.mobile.pixel .orientrow button {
+  padding: 4px 10px; font-size: 11px;
+  background: var(--px-ink2); color: var(--px-paper);
+  border: 2px solid var(--px-stone2);
+}
+#app.mobile.pixel .orientrow button.sel {
+  background: var(--px-gold); color: #101312; border-color: var(--px-gold);
+}
