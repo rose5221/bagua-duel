@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>八卦弈魂 · 宣传图</title>
+<style>
+  @font-face { font-family:'FusionPixel'; src:url('assets/fonts/fusion-pixel-12px.woff2') format('woff2'); font-display:swap; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; width:1920px; height:1080px; overflow:hidden; background:#050809; }
+  body { font-family:'FusionPixel','PingFang SC',monospace; color:#f1ead8; }
+  .stage { position:relative; width:1920px; height:1080px; overflow:hidden;
+    background:
+      radial-gradient(ellipse at 50% 42%, #334346 0%, #111a1b 34%, #050809 72%),
+      repeating-linear-gradient(0deg,transparent 0 3px,rgba(255,255,255,.02) 3px 4px);
+  }
+  .bgmountain { position:absolute; left:50%; top:-4%; width:1900px; transform:translateX(-50%); opacity:.24; filter:contrast(1.25) brightness(.8); image-rendering:pixelated; }
+  .cloud { position:absolute; width:1100px; height:200px; opacity:.22; filter:blur(18px); background:radial-gradient(ellipse at 50% 50%,#c8d2ce,transparent 68%); }
+  .cloud.a { left:-160px; top:220px; transform:rotate(-7deg); }
+  .cloud.b { right:-160px; bottom:120px; transform:rotate(8deg); }
+  .stars { position:absolute; inset:0; opacity:.6;
+    background-image:radial-gradient(#d0ae58 1px,transparent 1px),radial-gradient(#6f9ca3 1px,transparent 1px);
+    background-size:137px 91px,211px 173px; background-position:12px 30px,80px 90px;
+  }
+  .board { position:absolute; width:760px; height:760px; left:50%; top:54%; transform:translate(-50%,-50%) rotate(-5deg);
+    filter:drop-shadow(0 24px 55px rgba(0,0,0,.85)) drop-shadow(0 0 55px rgba(208,174,88,.22));
+  }
+  .board img { width:100%; height:100%; object-fit:contain; image-rendering:pixelated; }
+  h1 { position:absolute; left:50%; top:68px; transform:translateX(-50%); margin:0; font-size:112px; font-weight:normal;
+    letter-spacing:.14em; color:#fff9e8; white-space:nowrap; z-index:8;
+    -webkit-text-stroke:.5px #08090a;
+    text-shadow:0 5px 0 #000,0 10px 0 #000,0 0 36px rgba(208,174,88,.45);
+  }
+  h1:after { content:''; display:block; width:280px; height:4px; margin:16px auto 0; background:#c2a24c; box-shadow:0 4px 0 #000; }
+  .card { position:absolute; width:220px; height:294px; border:3px solid #0a0e0f; background:#e8dfc8;
+    box-shadow:8px 10px 0 rgba(0,0,0,.75), 0 0 28px rgba(0,0,0,.35); overflow:hidden; z-index:4;
+  }
+  .card img { width:100%; height:100%; object-fit:cover; image-rendering:pixelated; }
+  .left-cards .card:nth-child(1) { left:85px; top:220px; transform:rotate(-14deg); }
+  .left-cards .card:nth-child(2) { left:180px; top:390px; transform:rotate(-7deg); }
+  .left-cards .card:nth-child(3) { left:80px; top:565px; transform:rotate(7deg); }
+  .right-cards .card:nth-child(1) { right:85px; top:220px; transform:rotate(14deg); }
+  .right-cards .card:nth-child(2) { right:180px; top:390px; transform:rotate(7deg); }
+  .right-cards .card:nth-child(3) { right:80px; top:565px; transform:rotate(-7deg); }
+  .glow { position:absolute; left:50%; top:54%; width:950px; height:950px; transform:translate(-50%,-50%); border-radius:50%;
+    border:1px solid rgba(208,174,88,.22); box-shadow:0 0 80px rgba(208,174,88,.08) inset;
+  }
+  .glow:before { content:''; position:absolute; inset:44px; border-radius:50%; border:1px dashed rgba(111,156,163,.2); }
+  .souls { position:absolute; left:50%; bottom:66px; transform:translateX(-50%); display:flex; gap:18px; align-items:center; z-index:7; }
+  .orb { width:48px; height:48px; border-radius:50%; background:radial-gradient(circle at 35% 30%,#f8e6a4,#d0ae58 45%,#6e4e22 100%);
+    border:3px solid #0b0e0f; box-shadow:0 0 24px rgba(208,174,88,.75); }
+  .pips { display:flex; gap:10px; margin-left:14px; }
+  .pips i { width:14px; height:14px; border-radius:50%; background:#6f9ca3; border:2px solid #0b0e0f; box-shadow:0 0 10px rgba(111,156,163,.5); }
+  .pips i:nth-child(n+6) { background:#39484a; box-shadow:none; }
+  .scene2 .card { width:260px; height:348px; }
+  .scene2 .left-cards .card:nth-child(1) { left:90px; top:260px; }
+  .scene2 .left-cards .card:nth-child(2) { left:210px; top:430px; }
+  .scene2 .right-cards .card:nth-child(1) { right:90px; top:260px; }
+  .scene2 .right-cards .card:nth-child(2) { right:210px; top:430px; }
+  .scene2 .left-cards .card:nth-child(3), .scene2 .right-cards .card:nth-child(3) { display:none; }
+  .scene2 .souls { transform:translateX(-50%) scale(1.5); transform-origin:center bottom; bottom:90px; }
+  .scene3 .board { transform:translate(-50%,-50%) rotate(9deg) scale(1.05); }
+  .scene3 .left-cards .card:nth-child(1) { left:55px; top:160px; transform:rotate(-18deg); }
+  .scene3 .left-cards .card:nth-child(2) { left:140px; top:330px; transform:rotate(-10deg); }
+  .scene3 .left-cards .card:nth-child(3) { left:45px; top:510px; transform:rotate(2deg); }
+  .scene3 .right-cards .card:nth-child(1) { right:55px; top:160px; transform:rotate(18deg); }
+  .scene3 .right-cards .card:nth-child(2) { right:140px; top:330px; transform:rotate(10deg); }
+  .scene3 .right-cards .card:nth-child(3) { right:45px; top:510px; transform:rotate(-2deg); }
+  .vignette { position:absolute; inset:0; z-index:10; box-shadow:inset 0 0 260px 90px #000; pointer-events:none; }
+</style>
+</head>
+<body>
+<div class="stage scene" id="stage">
+  <img class="bgmountain" src="assets/pixel/scene/mountain.png" alt="">
+  <div class="cloud a"></div><div class="cloud b"></div><div class="stars"></div>
+  <div class="glow"></div>
+  <div class="board"><img src="assets/pixel/table.png" alt=""></div>
+  <div class="left-cards">
+    <div class="card"><img src="assets/art/cards-pixel/qian-fu.webp" alt=""></div>
+    <div class="card"><img src="assets/art/cards-pixel/li-zhongnv.webp" alt=""></div>
+    <div class="card"><img src="assets/art/cards-pixel/dui-shaonv.webp" alt=""></div>
+  </div>
+  <div class="right-cards">
+    <div class="card"><img src="assets/art/cards-pixel/zhen-changnan.webp" alt=""></div>
+    <div class="card"><img src="assets/art/cards-pixel/xun-changnv.webp" alt=""></div>
+    <div class="card"><img src="assets/art/cards-pixel/kan-zhongnan.webp" alt=""></div>
+  </div>
+  <h1>八卦弈魂</h1>
+  <div class="souls"><i class="orb"></i><i class="orb"></i><i class="orb"></i><span class="pips"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
+  <div class="vignette"></div>
+</div>
+<script>
+  const scene=Number(new URLSearchParams(location.search).get('scene')||1);
+  if(scene===2) document.getElementById('stage').classList.add('scene2');
+  if(scene===3) document.getElementById('stage').classList.add('scene3');
+</script>
+</body>
+</html>

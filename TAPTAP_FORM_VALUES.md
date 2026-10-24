@@ -28,9 +28,11 @@
 
 ## 游戏资料
 
+- 首页推荐语：`像素国风卡牌，八卦五行定阵`（14 字，不含极限词）
 - 图标：`icon-512.png`
 - 截图：`screenshots/01-board.png`、`02-card-detail.png`、`03-board-hand.png`
-- 宣传图：`promo-16x9.png`
+- 宣传图：`promo-16x9-1.png`（或 2/3）
+- 1:1 宣传图：`promo-1x1.png`
 - 宣传片：`宣传片-动画版-16x9.mp4`（15.27 秒，1280×720，H.264 30fps）
 - 视频：`实机演示-竖屏.mp4`（22 秒，1080×2400）
 - 简介：见 `TAPTAP_SUBMISSION.md`

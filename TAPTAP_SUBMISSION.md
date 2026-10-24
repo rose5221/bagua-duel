@@ -5,11 +5,11 @@
 - APK：`/Users/huli/Desktop/八卦弈魂-TapTap/八卦弈魂-1.0.apk`
 - 包名：`com.huli.baguayihun`
 - 版本：`1.0 / versionCode 1`
-- 方向：竖屏
+- 方向：默认竖屏，可在开始页/暂停菜单切换横屏
 - 图标：`/Users/huli/Desktop/八卦弈魂-TapTap/icon-512.png`（512×512）
-- 截图：`screenshots/01-board.png`、`02-card-detail.png`、`03-board-hand.png`（720×1600）
-- 宣传图：`promo-16x9.png`
-- 宣传片：`宣传片-动画版-16x9.mp4`（15.27 秒，1280×720，H.264 30fps）（1920×1080）
+- 截图：`screenshots/01-board.png`、`02-card-detail.png`、`03-board-hand.png`（720×1846）
+- 宣传图：`promo-16x9-1.png`（或 2/3）
+- 1:1 宣传图：`promo-1x1.png`
 - 宣传片（动画版）：`宣传片-动画版-16x9.mp4`（15.27 秒，1280×720，H.264 30fps）
 - 实机视频：`实机演示-竖屏.mp4`（22 秒，1080×2400）
 - 隐私政策：`https://bagua-duel.onrender.com/privacy.html`（运营者：异世界的高手的工作室；邮箱：193662091@qq.com）
@@ -18,6 +18,9 @@
 ## 2. 商店文案（可直接粘贴）
 
 游戏名：八卦弈魂
+
+首页推荐语（不超过 25 字）：
+> 像素国风卡牌，八卦五行定阵
 
 一句话简介（前 50 字）：
 > 像素国风卡牌对战：八卦五行定阵，三魂七魄闯九关。
